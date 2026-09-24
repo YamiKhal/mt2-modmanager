@@ -1,0 +1,77 @@
+.menubar {
+    display: flex;
+    gap: 2px;
+    padding: 2px 6px;
+    background: var(--desk-dark);
+    border-bottom: 1px solid rgb(0 0 0 / .5);
+}
+
+.menu {
+    position: relative;
+}
+
+.menutitle {
+    background: none;
+    border: 0;
+    padding: 3px 10px;
+    cursor: default;
+}
+
+.menutitle:hover,
+.menu.open .menutitle {
+    background: var(--btn);
+}
+
+.menupop {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 50;
+    min-width: 240px;
+    padding: 4px 0;
+    background: var(--menu-bg);
+    border: 1px solid var(--btn-line);
+    box-shadow: 0 8px 24px rgb(0 0 0 / .6);
+}
+
+.menu.open .menupop {
+    display: block;
+}
+
+.menupop button {
+    display: flex;
+    width: 100%;
+    padding: 5px 14px;
+    gap: 20px;
+    background: none;
+    border: 0;
+    text-align: left;
+    cursor: default;
+}
+
+.menupop button:hover:not(:disabled) {
+    background: var(--btn-hi);
+}
+
+.menupop button:disabled {
+    color: rgb(255 255 255 / .35);
+}
+
+.menupop button.checked::after {
+    content: "✓";
+    margin-left: auto;
+    color: var(--gold);
+}
+
+.menupop kbd {
+    margin-left: auto;
+    font: inherit;
+    color: var(--muted);
+}
+
+.menupop hr {
+    border: 0;
+    border-top: 1px solid rgb(255 255 255 / .12);
+    margin: 4px 0;
+}

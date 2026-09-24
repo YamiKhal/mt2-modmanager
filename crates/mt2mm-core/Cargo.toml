@@ -1,0 +1,20 @@
+[package]
+name = "mt2mm-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+zip = { version = "2", default-features = false, features = ["deflate"] }
+walkdir = "2"
+dirs = "5"
+sysinfo = { version = "0.39.6", default-features = false, features = ["system"] }
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.52"
+
+[dev-dependencies]
+walkdir = "2"

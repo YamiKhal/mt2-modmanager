@@ -1,0 +1,46 @@
+[
+  {
+    "group": "Crunch Time",
+    "key": "crunch_speed",
+    "label": "Developer speed multiplier",
+    "description": "Multiplier each Crunch Time tech applies to development speed.",
+    "type": "float",
+    "default": 1.25,
+    "min": 1.05,
+    "max": 2,
+    "step": 0.05,
+    "unit": "X",
+    "input": "slider"
+  },
+  {
+    "group": "Crunch Time",
+    "key": "crunch2_enabled",
+    "label": "Enable Crunch Time II",
+    "type": "bool",
+    "default": true
+  },
+  {
+    "group": "Mega Inns",
+    "key": "megainns_price",
+    "label": "Research price",
+    "type": "int",
+    "default": 40000,
+    "min": 10000,
+    "max": 100000,
+    "step": 5000,
+    "unit": "$",
+    "input": "slider"
+  },
+  {
+    "group": "Mega Inns",
+    "key": "megainns_boost",
+    "label": "Inn capacity",
+    "type": "choice",
+    "default": "2",
+    "options": [
+      { "value": "1.5", "label": "+50%" },
+      { "value": "2", "label": "+100%" },
+      { "value": "3", "label": "+200%" }
+    ]
+  }
+]

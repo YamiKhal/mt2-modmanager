@@ -1,0 +1,15 @@
+# Only the new items. The manager merges them into the game's Powers.txt.
+mmoItemTypeCommand
+{
+	name "@OpenMods"
+	key "item_openmods"
+	iconName "icon-overview"
+	command "MessageTo Game OpenModsFolder"
+}
+mmoItemTypeCommand
+{
+	name "@AddCash"
+	key "item_addcash"
+	iconName "icon-finance_report"
+	command "add_cash 100000"
+}

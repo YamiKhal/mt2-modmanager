@@ -1,0 +1,8 @@
+{
+  "id": "cashplus",
+  "name": "Cash Plus",
+  "version": "1.0.0",
+  "author": "Yamikhal",
+  "description": "Test Mod: Adds a 1m cheat button, removes finances button and increases developer salaries.",
+  "dependencies": ["toolbox"]
+}

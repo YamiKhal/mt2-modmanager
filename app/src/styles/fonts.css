@@ -1,0 +1,27 @@
+@font-face {
+    font-family: "Titillium Web";
+    font-weight: 400;
+    src: url(/fonts/titillium-web-400.woff2) format("woff2");
+    /* Fixed metrics keep the line box the same on every platform. */
+    ascent-override: 106%;
+    descent-override: 46%;
+    line-gap-override: 0%;
+}
+
+@font-face {
+    font-family: "Titillium Web";
+    font-weight: 600;
+    src: url(/fonts/titillium-web-600.woff2) format("woff2");
+    ascent-override: 106%;
+    descent-override: 46%;
+    line-gap-override: 0%;
+}
+
+@font-face {
+    font-family: "Titillium Web";
+    font-weight: 700;
+    src: url(/fonts/titillium-web-700.woff2) format("woff2");
+    ascent-override: 106%;
+    descent-override: 46%;
+    line-gap-override: 0%;
+}

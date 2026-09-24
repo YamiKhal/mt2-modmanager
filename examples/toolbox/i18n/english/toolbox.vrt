@@ -1,0 +1,5 @@
+actionbar_tab_mod "Mod"
+item_openmods_displayname "Open Mods Folder"
+item_openmods_description "Opens the game's mod folder."
+item_addcash_displayname "Add Cash"
+item_addcash_description "Adds $100k to your bank balance."

@@ -1,0 +1,45 @@
+:root {
+    color-scheme: dark;
+    /* PanelBacking.mat "bright" / "dark" / "swirl" */
+    --panel-bright: rgb(6 80 143);
+    --panel-dark: rgb(6 33 53);
+    --panel-swirl: rgb(0 10 15);
+    /* DarkPanelBacking.mat (desktop background) */
+    --desk-bright: rgb(3 41 71);
+    --desk-dark: rgb(4 20 36);
+    /* WindowTitleBar.mat + titlebar_gradient.png */
+    --title-top: rgb(8 45 74);
+    --title-bottom: rgb(4 61 107);
+    --panel-glow: rgb(1 92 163);  /* PanelGlow.mat: window, tab and list outlines */
+    /* window body: bright at the top, darkest a little above the middle, bright again at the bottom */
+    --body-top: rgb(6 76 131);
+    --body-mid: rgb(6 35 56);
+    --body-bottom: rgb(6 93 165);
+    --tab-inactive: rgb(8 26 36);
+    --tab-inactive-hover: rgb(12 42 62);
+    --tab-on-top: rgb(6 84 147);
+    --well: rgb(0 0 0 / .5);  /* DarkGrey.mat (list backgrounds) */
+    --row-alt: rgb(0 0 0 / .15);  /* GridAlternate.mat */
+    --row-hover: rgb(255 255 255 / .06);
+    --row-sel: rgb(115 77 20);  /* GridHighlight.mat / GuiOrange.mat */
+    --btn: rgb(2 97 177);  /* ButtonBackground.mat */
+    --btn-hi: rgb(190 122 21);  /* ButtonHighlight.mat / ButtonBackgroundActive.mat */
+    --btn-disabled: rgb(26 41 46);  /* ButtonBackgroundDisabled.mat */
+    --btn-line: var(--panel-glow);
+    --btn-line-hi: rgb(204 179 26);  /* ButtonOutlineActive.mat */
+    --btn-green: rgb(8 77 15);  /* GreenButtonBackground.mat */
+    --btn-red: rgb(77 8 15);  /* RedButtonBackground.mat */
+    --menu-bg: rgb(4 19 36 / .97);  /* ComboBoxMenuBacking.mat */
+    --text: rgb(230 230 230);  /* textColor 0.9 0.9 0.9 */
+    --muted: rgb(179 179 179);  /* textColor 0.7 0.7 0.7 */
+    --gold: rgb(240 222 112);  /* textColor 0.94 0.87 0.44 */
+    --blue-text: rgb(56 153 235);  /* textColor 0.22 0.60 0.92 */
+    --cyan-text: rgb(166 242 255);  /* textColor 0.65 0.95 1.0 */
+    --orange-text: rgb(255 128 0);  /* textColor 1.0 0.5 0.0 */
+    --red-text: rgb(255 90 90);
+    --green-text: rgb(110 230 110);
+    --warn: rgb(179 128 0);  /* AlertBorder_Warning.mat */
+    --scroll-thumb: rgb(78 78 78);  /* ScrollBarThumb.png */
+    --scroll-edge: rgb(54 54 54);
+    font-size: 14px;
+}

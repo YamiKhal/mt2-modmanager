@@ -1,0 +1,122 @@
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 28px;
+    padding: 0 14px;
+    line-height: 1;
+    white-space: nowrap;
+    background: var(--btn);
+    border: 1px solid var(--btn);
+    color: #fff;
+    cursor: pointer;
+    transition: background .08s;
+}
+
+.btn:hover:not(:disabled) {
+    background: var(--btn-hi);
+    border-color: var(--btn-line-hi);
+}
+
+.btn:active:not(:disabled) {
+    filter: brightness(.9);
+}
+
+.btn:disabled {
+    background: var(--btn-disabled);
+    color: rgb(255 255 255 / .35);
+    border-color: var(--btn-disabled);
+    cursor: default;
+}
+
+.btn.sq {
+    width: 28px;
+    padding: 0;
+}
+
+/* the font sits a little high in its line box: nudge button labels down so they look centred */
+.btn:not(.sq) {
+    padding-top: 2px;
+}
+
+.btn.small:not(.sq) {
+    padding-top: 3px;
+}
+
+.btn.small {
+    height: 22px;
+    padding: 0 10px;
+    font-size: .9em;
+}
+
+.btn.danger:not(:disabled) {
+    background: var(--btn-red);
+    border-color: var(--btn-red);
+}
+
+.btn.danger:hover:not(:disabled) {
+    background: var(--btn-hi);
+}
+
+.btn.primary:not(:disabled) {
+    background: var(--btn-hi);
+    border-color: var(--btn-line-hi);
+}
+
+.btn.primary:hover:not(:disabled) {
+    filter: brightness(1.15);
+}
+
+.btn.applygame:not(:disabled) {
+    background: var(--btn-hi);
+    border-color: var(--btn-line-hi);
+    font-weight: 600;
+}
+
+.btn.applygame:not(:disabled):hover {
+    filter: brightness(1.15);
+}
+
+.btn.applygame {
+    height: 32px;
+    min-width: 96px;
+}
+
+.btn.launch {
+    height: 32px;
+    padding: 2px 20px 0;
+    font-weight: 700;
+    font-size: 1.05em;
+    letter-spacing: .02em;
+    background: var(--btn-green);
+    border-color: var(--btn-green);
+}
+
+.btn.launch svg {
+    width: 15px;
+    height: 15px;
+}
+
+.linkbtn {
+    background: none;
+    border: 0;
+    color: var(--blue-text);
+    cursor: pointer;
+    padding: 0 4px;
+}
+
+.linkbtn:hover {
+    color: var(--gold);
+}
+
+.btnrow {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.btnrow.end {
+    justify-content: flex-end;
+}

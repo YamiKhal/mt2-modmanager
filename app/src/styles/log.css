@@ -1,0 +1,48 @@
+.logpane {
+    margin: 0 10px 8px;
+    display: flex;
+    flex-direction: column;
+    height: 160px;
+    background: rgb(0 0 0 / .55);
+    border: 1px solid var(--btn-line);
+}
+
+.loghead {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding: 3px 8px;
+    background: rgb(0 0 0 / .3);
+}
+
+.log {
+    list-style: none;
+    margin: 0;
+    padding: 4px 8px;
+    overflow: auto;
+    flex: 1;
+    font-family: ui-monospace, Consolas, monospace;
+    font-size: 12px;
+    user-select: text;
+}
+
+.log li {
+    white-space: pre-wrap;
+}
+
+.log .t {
+    color: var(--muted);
+    margin-right: 8px;
+}
+
+.log .error {
+    color: var(--red-text);
+}
+
+.log .warn {
+    color: var(--gold);
+}
+
+.log .ok {
+    color: var(--green-text);
+}

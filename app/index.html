@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MT2 Mod Manager</title>
+    <script type="module" src="/src/main.ts"></script>
+</head>
+<body>
+
+<!--
+    The page's fixed layout. Lists, the Details tab, the Conflicts tab and dialog contents are
+    filled in by the scripts in src/features. Buttons name what they do in data-act
+    (see src/features/actions.ts).
+-->
+
+<!--menu bar-->
+<nav class="menubar" aria-label="Main menu">
+    <div class="menu">
+        <button class="menutitle" aria-haspopup="true">File</button>
+        <div class="menupop" role="menu">
+            <button role="menuitem" data-act="addMod">Add mod…<kbd>Ctrl+O</kbd></button>
+            <button role="menuitem" data-act="addFolder">Add all mods in folder…</button>
+            <hr>
+            <button role="menuitem" data-act="refresh">Refresh<kbd>F5</kbd></button>
+            <hr>
+            <button role="menuitem" data-act="openMod">Open game's mod folder</button>
+            <button role="menuitem" data-act="openLibrary">Open mod library folder</button>
+        </div>
+    </div>
+
+    <div class="menu">
+        <button class="menutitle" aria-haspopup="true">Profile</button>
+        <div class="menupop" role="menu">
+            <button role="menuitem" data-act="newProfile">New profile…</button>
+            <button role="menuitem" data-act="dupProfile">Duplicate profile…</button>
+            <button role="menuitem" data-act="renameProfile">Rename profile…</button>
+            <button role="menuitem" data-act="deleteProfile">Delete profile</button>
+        </div>
+    </div>
+
+    <div class="menu">
+        <button class="menutitle" aria-haspopup="true">Tools</button>
+        <div class="menupop" role="menu">
+            <button role="menuitem" data-act="deploy">Apply without launching</button>
+            <button role="menuitem" data-act="clean">Remove mods from game</button>
+            <hr>
+            <button role="menuitem" data-act="details">Build details…</button>
+            <button role="menuitem" data-act="copyGameVersion">Copy game version</button>
+            <button role="menuitem" data-act="settings">Settings…</button>
+        </div>
+    </div>
+
+    <div class="menu">
+        <button class="menutitle" aria-haspopup="true">View</button>
+        <div class="menupop" role="menu">
+            <button role="menuitem" data-act="toggleLog" id="miLog">Log</button>
+        </div>
+    </div>
+
+    <div class="menu">
+        <button class="menutitle" aria-haspopup="true">Help</button>
+        <div class="menupop" role="menu">
+            <button role="menuitem" data-act="about">About MT2 Mod Manager</button>
+        </div>
+    </div>
+</nav>
+
+<!--toolbar: mod profile, Apply, Launch-->
+<header class="toolbar">
+    <label class="profilepick">Profile:
+        <select id="profileSel" aria-label="Mod profile"></select>
+    </label>
+
+    <button class="btn sq" data-act="newProfile" title="New profile" aria-label="New profile">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M7 3h2v4h4v2H9v4H7V9H3V7h4z"/></svg>
+    </button>
+    <button class="btn sq" data-act="deleteProfile" title="Delete profile" aria-label="Delete profile">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 7h10v2H3z"/></svg>
+    </button>
+
+    <span class="grow"></span>
+
+    <button class="btn applygame" data-act="deploy" id="btnApplyGame" disabled>Applied</button>
+    <button class="btn launch" data-act="launch" id="btnLaunch"
+                    title="Apply the profile's mods to the game, then start it through Steam">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2.5v11l8.5-5.5z"/></svg>Launch
+    </button>
+</header>
+
+<div id="problems" class="banner" hidden></div>
+
+<main class="panes">
+    <!--left window: Available Mods-->
+    <section class="window" aria-labelledby="availTitle">
+        <h2 class="wtitle" id="availTitle">Available Mods</h2>
+
+        <div class="wbody">
+            <div class="filterrow">
+                <input id="filter" type="search" placeholder="Filter" aria-label="Filter mods">
+                <button class="btn sq" data-act="refresh" title="Refresh (F5)" aria-label="Refresh">
+                    <svg viewBox="0 0 16 16" aria-hidden="true">
+                        <path d="M12.9 8.6a5 5 0 1 1-1.5-3.7" fill="none" stroke="currentColor" stroke-width="1.8"/>
+                        <path d="M13.6 2.4v4.8H8.8z"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="listhead avail"><span>Title</span><span>Version</span></div>
+            <ul id="availList" class="list" role="listbox" aria-multiselectable="true" aria-label="Available mods"></ul>
+            <p id="availEmpty" class="empty" hidden>
+                No mods yet.<br>Use <b>Add mod</b>, or drop <b>.zip</b> files or mod folders onto this window.
+            </p>
+
+            <button id="handInstalled" class="notice" hidden></button>
+
+            <div class="btnrow">
+                <button class="btn" data-act="addMod"
+                                title="Add a mod: a .zip, or a mod folder's manifest.json">Add mod</button>
+                <button class="btn" data-act="addFolder"
+                                title="Add every mod (folders and .zip files with a manifest.json) inside a folder">Add folder</button>
+                <button class="btn danger" data-act="removeMods" id="btnRemove" disabled
+                                title="Delete the selected mods from the library">Remove</button>
+                <span class="grow"></span>
+                <button class="btn" data-act="applyMods" id="btnApply" disabled
+                                title="Add the selected mods to this profile's Applied Mods">Add to profile <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 7h8.2L7 3.8 8.4 2.4 14 8l-5.6 5.6L7 12.2 10.2 9H2z"/></svg></button>
+            </div>
+        </div>
+    </section>
+
+    <!--right window: Applied Mods / Details / Conflicts-->
+    <section class="window" aria-label="Profile">
+        <div class="tabs wtitle" role="tablist">
+            <button role="tab" data-tab="applied" aria-selected="true">Applied Mods</button>
+            <button role="tab" data-tab="desc">Details</button>
+            <button role="tab" data-tab="conflicts">Conflicts <span id="conflictCount" class="count" hidden></span></button>
+        </div>
+
+        <div class="wbody" id="tab-applied">
+            <div class="appliedwrap">
+                <div class="appliedmain">
+                    <div class="listhead applied"><span></span><span>#</span><span>Title</span><span>Version</span></div>
+                    <ol id="appliedList" class="list" aria-label="Applied mods, in load order"></ol>
+                    <p id="appliedEmpty" class="empty" hidden>
+                        No mods applied to this profile.<br>Select mods on the left and press <b>Add to profile</b>.
+                    </p>
+                </div>
+
+                <div class="sidebtns">
+                    <button class="btn sq" data-act="up" id="btnMoveUp" title="Load earlier" aria-label="Move up">
+                        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 4.5l5 7H3z"/></svg>
+                    </button>
+                    <button class="btn sq" data-act="down" id="btnMoveDown" title="Load later" aria-label="Move down">
+                        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 11.5l-5-7h10z"/></svg>
+                    </button>
+                    <button class="btn sq danger" data-act="unapply" id="btnUnapply"
+                                    title="Take out of this profile (stays in Available Mods)" aria-label="Take out of profile">
+                        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 3 3 4.2 6.8 8 3 11.8 4.2 13 8 9.2l3.8 3.8 1.2-1.2L9.2 8 13 4.2 11.8 3 8 6.8z"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="wbody" id="tab-desc" hidden></div>
+        <div class="wbody scroll" id="tab-conflicts" hidden></div>
+    </section>
+</main>
+
+<!--log (hidden by default) and status bar-->
+<section id="logPane" class="logpane" hidden aria-label="Log">
+    <div class="loghead">
+        <b>Log</b>
+        <span class="grow"></span>
+        <button class="btn small" data-act="clearLog">Clear</button>
+        <button class="btn small" data-act="toggleLog">Hide</button>
+    </div>
+    <ol id="log" class="log"></ol>
+</section>
+
+<footer class="statusbar">
+    <span id="gameLine">Detecting game…</span>
+    <span class="grow"></span>
+    <span id="busyLine" hidden><i class="spinner"></i><span id="busyText"></span></span>
+    <button class="linkbtn" data-act="toggleLog" id="logToggle">Log</button>
+</footer>
+
+<div id="dropzone" class="dropzone" hidden><div>Drop to add mods</div></div>
+
+<!-- dialog Build details-->
+<dialog id="details" class="gwin wide">
+    <h2 class="wtitle">Build details<button class="closex" data-close aria-label="Close">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 3 3 4.2 6.8 8 3 11.8 4.2 13 8 9.2l3.8 3.8 1.2-1.2L9.2 8 13 4.2 11.8 3 8 6.8z"/></svg>
+    </button></h2>
+
+    <div class="tabs sub" role="tablist">
+        <button role="tab" data-dtab="report" aria-selected="true">Report</button>
+        <button role="tab" data-dtab="files">Files</button>
+        <button role="tab" data-dtab="renames">Renamed ids</button>
+        <button role="tab" data-dtab="paths">Folders</button>
+    </div>
+
+    <div class="dbody" id="dtab-report"></div>
+    <div class="dbody" id="dtab-files" hidden></div>
+    <div class="dbody" id="dtab-renames" hidden></div>
+    <div class="dbody" id="dtab-paths" hidden></div>
+</dialog>
+
+<!-- dialog Settings-->
+<dialog id="settings" class="gwin">
+    <form method="dialog">
+        <h2 class="wtitle">Settings<button class="closex" value="cancel" aria-label="Close">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 3 3 4.2 6.8 8 3 11.8 4.2 13 8 9.2l3.8 3.8 1.2-1.2L9.2 8 13 4.2 11.8 3 8 6.8z"/></svg>
+        </button></h2>
+
+        <div class="form">
+            <label>Game install folder
+                <span class="pathrow">
+                    <input id="cfgInstall" placeholder="not found">
+                    <button class="btn" type="button" data-detect="cfgInstall">Detect</button>
+                    <button class="btn" type="button" data-browse="cfgInstall" data-kind="dir">Browse…</button>
+                </span>
+            </label>
+
+            <label>Game data (MMORPG.zip or extracted folder)
+                <span class="pathrow">
+                    <input id="cfgData" placeholder="not found">
+                    <button class="btn" type="button" data-detect="cfgData">Detect</button>
+                    <button class="btn" type="button" data-browse="cfgData" data-kind="zip">Browse…</button>
+                </span>
+            </label>
+
+            <label><span>Game profile folder (contains <code>mod</code> and <code>save</code>)</span>
+                <span class="pathrow">
+                    <input id="cfgProfile" placeholder="not found">
+                    <button class="btn" type="button" data-detect="cfgProfile">Detect</button>
+                    <button class="btn" type="button" data-browse="cfgProfile" data-kind="dir">Browse…</button>
+                </span>
+            </label>
+
+            <div class="btnrow end">
+                <button class="btn" value="cancel">Cancel</button>
+                <button class="btn primary" value="save">Save</button>
+            </div>
+        </div>
+    </form>
+</dialog>
+
+<!-- dialog question or text prompt (src/ui/askDialog.ts)-->
+<dialog id="ask" class="gwin">
+    <form method="dialog">
+        <h2 class="wtitle" id="askTitle"></h2>
+
+        <div class="form">
+            <p id="askText"></p>
+            <input id="askInput" hidden>
+
+            <div class="btnrow end">
+                <button class="btn" value="cancel">Cancel</button>
+                <button class="btn primary" value="ok" id="askOk">OK</button>
+            </div>
+        </div>
+    </form>
+</dialog>
+
+<!-- dialog mods installed by hand-->
+<dialog id="handDlg" class="gwin">
+    <h2 class="wtitle">Installed without the manager<button class="closex" data-close aria-label="Close">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 3 3 4.2 6.8 8 3 11.8 4.2 13 8 9.2l3.8 3.8 1.2-1.2L9.2 8 13 4.2 11.8 3 8 6.8z"/></svg>
+    </button></h2>
+
+    <div class="form">
+        <p>
+            These folders are in the game's <code>mod</code> folder. The game loads them, but they can't be merged
+            with your other mods. <b>Move into manager</b> takes a folder out of <code>mod</code> and adds it to
+            Available Mods and this profile.
+        </p>
+        <ul id="handList" class="plain"></ul>
+    </div>
+</dialog>
+
+<!-- dialog the game was updated since the last deploy-->
+<dialog id="gameUpdated" class="gwin">
+    <form method="dialog">
+        <h2 class="wtitle">Game updated<button class="closex" data-close aria-label="Close">
+            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 3 3 4.2 6.8 8 3 11.8 4.2 13 8 9.2l3.8 3.8 1.2-1.2L9.2 8 13 4.2 11.8 3 8 6.8z"/></svg>
+        </button></h2>
+
+        <div class="form">
+            <p>Game updated since mods were last applied</p>
+            <p class="muted" id="gameUpdatedVersion"></p>
+
+            <div class="btnrow end">
+                <button class="btn primary" value="ok" autofocus>OK</button>
+            </div>
+        </div>
+    </form>
+</dialog>
+
+<!-- dialog the game is running (src/features/gameLock.ts)-->
+<dialog id="gameRunning" class="gwin">
+    <h2 class="wtitle">Game running</h2>
+
+    <div class="form">
+        <p>MMORPG Tycoon 2 is running. The manager unlocks when the game closes.</p>
+        <p class="muted">Changes made while the game runs only take effect after it restarts.</p>
+
+        <div class="btnrow end">
+            <button class="btn" type="button" id="btnIgnoreGame" autofocus>Ignore</button>
+        </div>
+    </div>
+</dialog>
+
+<!-- dialog About-->
+<dialog id="about" class="gwin">
+    <h2 class="wtitle">About<button class="closex" data-close aria-label="Close">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.2 3 3 4.2 6.8 8 3 11.8 4.2 13 8 9.2l3.8 3.8 1.2-1.2L9.2 8 13 4.2 11.8 3 8 6.8z"/></svg>
+    </button></h2>
+
+    <div class="form">
+        <p><b>MT2 Mod Manager</b> <span id="aboutVer"></span></p>
+        <p>
+            Discord: <code>vierdant</code>
+        </p>
+        <p class="muted small">Not affiliated with VectorStorm. Font: Titillium Web (SIL Open Font License 1.1).</p>
+    </div>
+</dialog>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+</body>
+</html>

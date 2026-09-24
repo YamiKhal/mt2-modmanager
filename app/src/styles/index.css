@@ -1,0 +1,17 @@
+@import "./fonts.css";
+@import "./tokens.css";
+@import "./base.css";
+@import "./menubar.css";
+@import "./buttons.css";
+@import "./forms.css";
+@import "./toolbar.css";
+@import "./windows.css";
+@import "./tabs.css";
+@import "./lists.css";
+@import "./details.css";
+@import "./settings.css";
+@import "./issues.css";
+@import "./log.css";
+@import "./statusbar.css";
+@import "./dialogs.css";
+@import "./overlays.css";

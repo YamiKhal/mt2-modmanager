@@ -1,0 +1,32 @@
+.statusbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 3px 10px;
+    font-size: .9em;
+    color: var(--muted);
+    background: rgb(0 0 0 / .45);
+    border-top: 1px solid rgb(255 255 255 / .06);
+}
+
+#busyLine {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--gold);
+}
+
+.spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgb(255 255 255 / .2);
+    border-top-color: var(--gold);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}

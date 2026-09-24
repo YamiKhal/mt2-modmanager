@@ -1,0 +1,12 @@
+{
+  "id": "toolbox",
+  "name": "Mod Toolbox",
+  "version": "1.0.0",
+  "author": "Yamikhal",
+  "description": "Test mod: Adds a new toolbar tab with some debug commands.",
+  "mod_page": "https://example.com/mt2/toolbox",
+  "support": "https://example.com/mt2/toolbox/issues",
+  "license": "MIT",
+  "tags": ["toolbar", "cheats"],
+  "game_versions": ["0.30"]
+}

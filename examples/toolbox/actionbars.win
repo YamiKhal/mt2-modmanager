@@ -1,0 +1,34 @@
+# Adds a tab to the existing "Edit" action bar. Only the new parts are listed.
+mmoActionBar
+{
+	id "Edit";
+	tab
+	{
+		mmoActionBarTab
+		{
+			name "Mod"
+			key "actionbar_tab_mod";
+		}
+	}
+	actionBarContent
+	{
+		mmoActionBarContent
+		{
+			id "Mod";
+			viewMode Map;
+			configuration
+			{
+				mmoActionBarButtonConfiguration
+				{
+					slot 0;
+					itemName "@OpenMods";
+				}
+				mmoActionBarButtonConfiguration
+				{
+					slot 1;
+					itemName "@AddCash";
+				}
+			}
+		}
+	}
+}

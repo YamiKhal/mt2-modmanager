@@ -1,0 +1,125 @@
+.issues {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.issue {
+    padding: 8px 12px;
+    background: var(--well);
+    border-left: 3px solid;
+    user-select: text;
+}
+
+.issue.error {
+    border-color: rgb(255 40 40);
+}
+
+.issue.conflict {
+    border-color: var(--btn-hi);
+}
+
+.issue.warning {
+    border-color: var(--warn);
+}
+
+.issue.info {
+    border-color: var(--blue-text);
+}
+
+.issue .where {
+    display: block;
+    font-size: .88em;
+    color: var(--muted);
+}
+
+.issue .who {
+    color: var(--cyan-text);
+    font-weight: 600;
+}
+
+.lvl {
+    display: inline-block;
+    min-width: 64px;
+    font-size: .78em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+}
+
+.lvl.error {
+    color: var(--red-text);
+}
+
+.lvl.conflict {
+    color: var(--orange-text);
+}
+
+.lvl.warning {
+    color: var(--gold);
+}
+
+.lvl.info {
+    color: var(--blue-text);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .92em;
+    user-select: text;
+}
+
+/* Cells line up on the text baseline, so monospace and normal text sit at the same height. */
+th,
+td {
+    padding: 3px 8px;
+    text-align: left;
+    vertical-align: baseline;
+}
+
+th {
+    font-weight: 600;
+    background: var(--panel-dark);
+}
+
+/* Column headers stay put while the rows scroll under them. */
+thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    box-shadow: inset 0 -1px 0 var(--panel-glow);
+}
+
+/* Row headers (the Folders tab) stay on one line. */
+tbody th {
+    width: 1%;
+    white-space: nowrap;
+}
+
+td {
+    border-bottom: 1px solid rgb(255 255 255 / .06);
+}
+
+tr:nth-child(even) td {
+    background: var(--row-alt);
+}
+
+/* The Build details report: one plain row per line, the level as coloured text. */
+.report .lvl {
+    display: inline;
+    min-width: 0;
+    font-size: inherit;
+    font-weight: 600;
+    text-transform: capitalize;
+    letter-spacing: 0;
+}
+
+.report .where {
+    color: var(--muted);
+}

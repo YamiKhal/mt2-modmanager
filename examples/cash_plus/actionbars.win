@@ -1,0 +1,20 @@
+# "toolbox:Mod" refers to the Mod tab defined by the toolbox mod.
+mmoActionBar
+{
+	id "Edit";
+	actionBarContent
+	{
+		mmoActionBarContent
+		{
+			id "toolbox:Mod";
+			configuration
+			{
+				mmoActionBarButtonConfiguration
+				{
+					slot 2;
+					itemName "@AddMillion";
+				}
+			}
+		}
+	}
+}

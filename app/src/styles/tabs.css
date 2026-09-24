@@ -1,0 +1,61 @@
+.tabs {
+    display: flex;
+    justify-content: flex-start;
+    gap: 2px;
+    align-items: flex-end;
+    margin: 0;
+    padding: 2px 0 0 4px;
+    min-height: 0;
+    background: linear-gradient(to top, var(--panel-glow) 2px, transparent 2px);
+    border: 0;
+    box-shadow: none;
+}
+
+.tabs [role="tab"] {
+    /* same border and top padding whether selected or not, so the label never moves */
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 6px;
+    height: 31px;
+    margin-bottom: 2px;
+    padding: 3px 16px 0;
+    border: 2px solid transparent;
+    border-bottom: 0;
+    background: var(--tab-inactive) padding-box;
+    color: #fff;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.tabs [role="tab"]:hover {
+    background: var(--tab-inactive-hover) padding-box;
+}
+
+.tabs [role="tab"][aria-selected="true"] {
+    height: 33px;
+    margin-bottom: 0;
+    border-color: var(--panel-glow);
+    background: linear-gradient(var(--title-top) 20%, var(--body-top));
+}
+
+.tabs.sub {
+    padding-left: 10px;
+}
+
+.tabs.sub [role="tab"][aria-selected="true"] {
+    background: linear-gradient(var(--title-top) 20%, rgb(6 78 136));
+}
+
+.count {
+    min-width: 20px;
+    padding: 0 6px;
+    font-size: .85em;
+    line-height: 18px;
+    text-align: center;
+    background: var(--btn-hi);
+    color: #fff;
+}
+
+.count.err {
+    background: rgb(200 30 30);
+}

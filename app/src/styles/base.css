@@ -1,0 +1,109 @@
+* {
+    box-sizing: border-box;
+}
+
+[hidden],
+dialog:not([open]) {
+    display: none !important;
+}
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+    font-family: "Titillium Web", "Segoe UI", system-ui, sans-serif;
+    color: var(--text);
+    background:
+        radial-gradient(ellipse at 20% 0%, var(--desk-bright), transparent 60%),
+        radial-gradient(ellipse at 100% 100%, rgb(3 30 52), transparent 55%),
+        var(--desk-dark);
+    overflow: hidden;
+    user-select: none;
+}
+
+button,
+input,
+select {
+    font: inherit;
+    color: inherit;
+}
+
+code,
+.mono {
+    font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    font-size: .9em;
+}
+
+code {
+    color: var(--cyan-text);
+}
+
+b {
+    font-weight: 700;
+}
+
+.grow {
+    flex: 1;
+}
+
+.muted {
+    color: var(--muted);
+}
+
+.small {
+    font-size: .88em;
+}
+
+svg {
+    display: block;
+    width: 14px;
+    height: 14px;
+    fill: currentColor;
+    flex: none;
+}
+
+:focus-visible {
+    outline: 2px solid var(--btn-line-hi);
+    outline-offset: 1px;
+}
+
+h4 {
+    margin: 10px 0 6px;
+    font-weight: 600;
+}
+
+.empty {
+    margin: 0;
+    padding: 18px;
+    text-align: center;
+    color: var(--muted);
+}
+
+.hint {
+    margin: 0;
+    font-size: .88em;
+    color: var(--muted);
+}
+
+::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+}
+
+::-webkit-scrollbar-track {
+    background: rgb(0 0 0 / .35);
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--scroll-thumb);
+    border: 2px solid var(--scroll-edge);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgb(110 110 110);
+}

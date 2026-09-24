@@ -1,0 +1,64 @@
+select,
+input:not([type="checkbox"]) {
+    height: 28px;
+    padding: 0 8px;
+    background: rgb(0 10 18 / .85);
+    border: 1px solid var(--panel-glow);
+    color: var(--text);
+}
+
+select {
+    min-width: 200px;
+    cursor: pointer;
+}
+
+select option {
+    background: rgb(4 19 36);
+}
+
+input:focus,
+select:focus {
+    outline: none;
+    border-color: var(--btn-line-hi);
+}
+
+/* custom checkbox, like the game's check boxes */
+.check {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    background: rgb(0 0 0 / .5);
+    border: 1px solid var(--btn-line);
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+}
+
+.check:checked {
+    background: var(--btn);
+    border-color: var(--btn-line-hi);
+}
+
+.check:checked::after {
+    content: "";
+    width: 5px;
+    height: 10px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: translateY(-1px) rotate(45deg);
+}
+
+.check:hover {
+    border-color: var(--btn-line-hi);
+}
+
+.pathrow {
+    display: flex;
+    gap: 6px;
+}
+
+.pathrow input {
+    flex: 1;
+    min-width: 0;
+}

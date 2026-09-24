@@ -1,0 +1,7 @@
+mmoItemTypeCommand
+{
+	name "@AddMillion"
+	key "item_addmillion"
+	iconName "icon-finance_report"
+	command "add_cash 1000000"
+}

@@ -1,0 +1,120 @@
+# Additive tech file. mmoTechTree loads techs/base.vrt first, then every other
+# file in techs/, so this does NOT replace the vanilla tree.
+# Researched techs are stored in your save by id: try this on a
+# throwaway game first, and expect errors if you remove the mod from a game that used it.
+#
+# <crunch_speed>, <megainns_price> ... are settings: players change them in the manager, and the
+# manager writes their values here when it applies the mod. They're declared in config.json.
+
+mmoTech
+{
+	name "Crunch Time";
+	type "ops";
+	id "crunchtime";
+	prerequisite "gamelog";
+	cost 30000;
+	majorVersion 1;
+	devHours 8;
+	maxWorkers 2;
+	playerVisible true;
+	megaTooltipImageName "mt2_norings.png"
+	iconMaterial "icon-inspect"
+	gameValueMod {
+		mmoGameValueMod
+		{
+			name "dev_speed";
+			op multiply;
+			arg <crunch_speed>;
+		}
+		mmoGameValueMod
+		{
+			name "dev_speed_offline";
+			op multiply;
+			arg <crunch_speed>;
+		}
+	}
+}
+
+mmoTech
+{
+	name "Bigger Inns";
+	type "ops";
+	id "biggerinns";
+	cost 25000;
+	majorVersion 1;
+	devHours 6;
+	maxWorkers 2;
+	playerVisible true;
+	megaTooltipImageName "mt2_norings.png"
+	iconMaterial "icon-inspect"
+	gameValueMod {
+		mmoGameValueMod
+		{
+			name "inn_capacity_percent";
+			op multiply;
+			arg 1.5;
+		}
+	}
+}
+
+# ---- Dependency / version examples ----
+#   prerequisite "<tech id>"  - ONE tech id; that tech must be owned (researched AND deployed).
+#                               An id that doesn't exist silently counts as "no prerequisite".
+#   majorVersion N            - your MMO must have released version N.0.0 or later.
+#                               0 = available before the first release.
+# "Needs A and B" is done by chaining: C requires B, B requires A.
+
+# Chain step 2: needs Crunch Time (step 1, above) AND an MMO at v2.0.0+.
+mmoTech
+{
+	name "Crunch Time II";
+	type "ops";
+	id "crunchtime2";
+	prerequisite "crunchtime";
+	cost 60000;
+	majorVersion 2;
+	devHours 12;
+	maxWorkers 3;
+	playerVisible <crunch2_enabled>;
+	megaTooltipImageName "mt2_norings.png"
+	iconMaterial "icon-inspect"
+	gameValueMod {
+		mmoGameValueMod
+		{
+			name "dev_speed";
+			op multiply;
+			arg <crunch_speed>;
+		}
+		mmoGameValueMod
+		{
+			name "dev_speed_offline";
+			op multiply;
+			arg <crunch_speed>;
+		}
+	}
+}
+
+# Depends on a VANILLA tech: "inncapacityboost2" (Inn capacity boost 2, itself v2.0.0 + inncapacityboost).
+# Adds its own v3.0.0 requirement on top.
+mmoTech
+{
+	name "Mega Inns";
+	type "bonus";
+	id "megainns";
+	prerequisite "inncapacityboost2";
+	cost <megainns_price>;
+	majorVersion 3;
+	devHours 12;
+	maxWorkers 3;
+	playerVisible true;
+	megaTooltipImageName "mt2_norings.png"
+	iconMaterial "icon-inspect"
+	gameValueMod {
+		mmoGameValueMod
+		{
+			name "inn_capacity_percent";
+			op multiply;
+			arg <megainns_boost>;
+		}
+	}
+}

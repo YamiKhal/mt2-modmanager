@@ -1,0 +1,24 @@
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 10px;
+}
+
+.profilepick {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+}
+
+.banner {
+    margin: 0 10px 8px;
+    padding: 8px 12px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    background: rgb(179 128 0 / .25);
+    border: 1px solid var(--warn);
+    color: var(--gold);
+}
