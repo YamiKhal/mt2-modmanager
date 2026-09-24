@@ -15,6 +15,8 @@ jobs:
 
   build:
     needs: test
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
@@ -47,9 +49,14 @@ jobs:
         with:
           projectPath: app
           args: ${{ matrix.args }}
-          tagName: ${{ github.ref_name }}
-          releaseName: "MT2 Mod Manager ${{ github.ref_name }}"
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+          releaseName: ${{ github.ref_type == 'tag' && format('MT2 Mod Manager {0}', github.ref_name) || '' }}
           releaseDraft: true
+      - uses: actions/upload-artifact@v4
+        if: github.ref_type != 'tag'
+        with:
+          name: mt2mm-app-${{ matrix.os }}
+          path: target/**/release/bundle/
       - name: CLI
         run: cargo build --release -p mt2mm-cli
       - uses: actions/upload-artifact@v4
