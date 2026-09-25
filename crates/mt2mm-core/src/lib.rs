@@ -8,6 +8,7 @@ pub mod modconfig;
 pub mod namespace;
 pub mod paths;
 pub mod record;
+pub mod safety;
 pub mod session;
 pub mod util;
 pub mod vanilla;

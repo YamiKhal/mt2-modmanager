@@ -1,0 +1,52 @@
+# Adds three scenarios to the vanilla library; the manager merges them in by id and
+# prefixes the ids with "milestones_". Each starts once, when its trigger becomes true.
+# Only Subscribers, Version, Level and Literal triggers work. Event triggers close the game,
+# and "prerequisites" is never checked, so the stages are chained by rising subscriber counts.
+mmoScenarioLibrary
+{
+	scenarios
+	{
+		mmoScenarioSequence
+		{
+			id "inns";
+			sequence "scenarios/milestones_inns";
+			trigger
+			{
+				mmoPredicate_Subscribers
+				{
+					value 100;
+					test "GreaterThanEqual";
+				}
+			}
+			radiant false;
+		}
+		mmoScenarioSequence
+		{
+			id "smiths";
+			sequence "scenarios/milestones_smiths";
+			trigger
+			{
+				mmoPredicate_Subscribers
+				{
+					value 1000;
+					test "GreaterThanEqual";
+				}
+			}
+			radiant false;
+		}
+		mmoScenarioSequence
+		{
+			id "landmarks";
+			sequence "scenarios/milestones_landmarks";
+			trigger
+			{
+				mmoPredicate_Subscribers
+				{
+					value 5000;
+					test "GreaterThanEqual";
+				}
+			}
+			radiant false;
+		}
+	}
+}

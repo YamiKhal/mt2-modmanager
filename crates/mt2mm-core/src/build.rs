@@ -4,6 +4,7 @@ use crate::merge::{strip_all_directives, Level, Merger, Report};
 use crate::modconfig::{self, CONFIG_FILE};
 use crate::namespace::{self, VanillaIds};
 use crate::record::{self, Document, Record};
+use crate::safety;
 use crate::util::{i18n_language, is_record_path, rel_string};
 use crate::vanilla::Vanilla;
 use anyhow::Result;
@@ -201,6 +202,9 @@ pub fn plan(vanilla: &Vanilla, mods: &[LibraryMod], game_version: Option<String>
     let mut loaded: Vec<ModFiles> = Vec::new();
     for (lm, man) in &enabled {
         let mut mf = load_mod(lm, man, &mut plan.report)?;
+        for (rel, recs) in &mf.records {
+            safety::check_mod_file(&man.id, rel, recs, vanilla, &mut plan.report)?;
+        }
         let renames = namespace::plan_renames(&man.id, &mf.records, &vids, &known, &mut plan.report);
         for (rel, recs) in mf.records.iter_mut() {
             namespace::apply(rel, recs, &renames, &known);

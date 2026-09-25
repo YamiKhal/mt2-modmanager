@@ -1,0 +1,35 @@
+# Every step has a unique id: the save stores finished step ids and resumes from them.
+# "building" completes once any single owned region has at least timesNeeded buildings
+# with that feature; buildings that already exist count.
+mmoSequence
+{
+	steps
+	{
+		mmoStepMessage
+		{
+			id "landmarks_intro";
+			windowName "tutorial_message";
+			text "{milestones_landmarks_intro}";
+		}
+		mmoStepMessage
+		{
+			id "landmarks_goal";
+			windowName "tutorial_action";
+			type "building";
+			buildingFeature "Landmark";
+			timesNeeded <landmarks_needed>;
+			text "{milestones_landmarks_goal}";
+		}
+		mmoStepCommand
+		{
+			id "landmarks_reward";
+			command "add_cash <landmarks_reward>";
+		}
+		mmoStepMessage
+		{
+			id "landmarks_done";
+			windowName "tutorial_message";
+			text "{milestones_landmarks_done}";
+		}
+	}
+}

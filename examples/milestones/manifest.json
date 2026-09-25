@@ -1,0 +1,8 @@
+{
+  "id": "milestones",
+  "name": "Publisher Milestones",
+  "version": "1.0.0",
+  "author": "Yamikhal",
+  "description": "Example mod: three publisher challenges that start at 100, 1,000 and 5,000 subscribers. Each asks for buildings in one region and pays a cash reward. Start a new game to try it.",
+  "tags": ["scenarios", "challenges", "example"]
+}

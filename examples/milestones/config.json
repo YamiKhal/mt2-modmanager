@@ -1,0 +1,71 @@
+[
+  {
+    "group": "Taverns and tables (100 subscribers)",
+    "key": "inns_needed",
+    "label": "Inns needed in one region",
+    "type": "int",
+    "default": 3,
+    "min": 1,
+    "max": 10,
+    "step": 1,
+    "input": "slider"
+  },
+  {
+    "group": "Taverns and tables (100 subscribers)",
+    "key": "inns_reward",
+    "label": "Reward",
+    "type": "int",
+    "default": 25000,
+    "min": 0,
+    "max": 200000,
+    "step": 5000,
+    "unit": "$",
+    "input": "slider"
+  },
+  {
+    "group": "Arms race (1,000 subscribers)",
+    "key": "smiths_needed",
+    "label": "Blacksmiths needed in one region",
+    "type": "int",
+    "default": 3,
+    "min": 1,
+    "max": 10,
+    "step": 1,
+    "input": "slider"
+  },
+  {
+    "group": "Arms race (1,000 subscribers)",
+    "key": "smiths_reward",
+    "label": "Reward",
+    "type": "int",
+    "default": 75000,
+    "min": 0,
+    "max": 500000,
+    "step": 5000,
+    "unit": "$",
+    "input": "slider"
+  },
+  {
+    "group": "Sightseeing (5,000 subscribers)",
+    "key": "landmarks_needed",
+    "label": "Landmarks needed in one region",
+    "type": "int",
+    "default": 2,
+    "min": 1,
+    "max": 10,
+    "step": 1,
+    "input": "slider"
+  },
+  {
+    "group": "Sightseeing (5,000 subscribers)",
+    "key": "landmarks_reward",
+    "label": "Reward",
+    "type": "int",
+    "default": 150000,
+    "min": 0,
+    "max": 1000000,
+    "step": 10000,
+    "unit": "$",
+    "input": "slider"
+  }
+]

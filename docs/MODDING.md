@@ -261,6 +261,25 @@ A few rules:
 - **Referencing another mod's id:** write `othermod:id`. For example `prerequisite "crunch:crunchtime"` or `itemName "@toolbox:AddCash"` become `crunch_crunchtime` / `@toolbox_AddCash`. Writing `crunch_crunchtime` directly works too. Either way, add that mod to your `dependencies`.
 - **Seeing every rename:** **Tools -> Build details -> Renamed ids** in the manager, or `mt2mm check` on the command line.
 
+## Commands the manager blocks or flags
+
+Toolbar items, `.win` buttons and scenario steps can run game commands, and a few of those can harm the player. The manager checks every mod's text files. What vanilla already does in the same file isn't reported, so shipping a full copy of `gamemenu.win` is fine.
+
+| Found in your mod | Level | Why |
+|---|---|---|
+| `MessageTo Mode ConfirmDelete …` | error | Deletes a save file without asking |
+| `MessageTo Game OpenURL <x>` where `x` isn't an `http://` or `https://` link | error | The game passes `x` to the Windows shell, which can start programs |
+| `mmoPredicate_Event` | error | The game can't configure it from data, so it shows a failed assertion and closes |
+| `MessageTo Mode Save`, `ConfirmSave`, `Autosave`, `ImmediateAutosave`, and the `mmoStepSave` step | warning | Writes a save and overwrites one with the same name |
+| `MessageTo Mode Delete` | warning | Opens the delete-save dialog |
+| `MessageTo Game GrantAchievement` / `RevokeAchievement` | warning | Changes Steam achievements |
+| `crash`, `backgroundcrash`, `assert`, `MessageTo Core …` | warning | Closes the game or breaks the session |
+| `prerequisites` on a scenario | warning | The game never checks it |
+| `MessageTo Game OpenURL "https://…"` | info | Opens the link in the browser |
+| `errorJump` | info | Not a field the game knows |
+
+Errors stop Launch and Apply until the mod is disabled or fixed.
+
 ## Testing your mod
 
 1. **Add mod** and pick your `.zip` or your folder's `manifest.json`, or drop the folder onto the window.
