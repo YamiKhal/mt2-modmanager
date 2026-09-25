@@ -53,8 +53,11 @@ export function removeModFromLibrary(id: string): Promise<void> {
     return invoke("remove_mod", { id });
 }
 
-export function getModIcon(id: string): Promise<ArrayBuffer> {
-    return invoke<ArrayBuffer>("mod_icon", { id });
+// Tauri's postMessage fallback (always used on macOS) sends raw bytes as a number array.
+export async function getModIcon(id: string): Promise<Uint8Array<ArrayBuffer>> {
+    const bytes = await invoke<ArrayBuffer | number[]>("mod_icon", { id });
+
+    return new Uint8Array(bytes);
 }
 
 
