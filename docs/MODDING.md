@@ -134,7 +134,7 @@ Placeholders are filled in all merged text files (see [How text files are merged
 
 ### Checks
 
-These show up on the **Conflicts** tab:
+These show up on the **Issues** tab:
 
 - **Broken config.json:** Bad JSON, an unknown field, a default outside its limits and so on. That's an error, and the build stops.
 - **Unused key:** A declared key that no file uses. Warning.
@@ -157,9 +157,9 @@ The player sees a note about each of these on the **Details** tab. If you want t
 
 ## How text files are merged
 
-These files get merged: `.txt .cfg .win .def .vrt .costume .variant .conf .defaults .mat .block .prototype .adv .sequence .vsprite .tcolor .tshape .tstyle`, plus the extension-less step files in `scenarios/`. The manager reads them with a port of the game's own parser.
+These files get merged: `.txt .cfg .win .def .vrt .costume .variant .conf .defaults .mat .block .prototype .adv .sequence .vsprite .tcolor .tshape .tstyle .van`, plus the extension-less step files in `scenarios/`. The manager reads them with a port of the game's own parser.
 
-Everything else (`.png .vmb .glsl .van .bank` …) is copied. If two mods ship the same file that edit the same vanilla value (non-additive), the mod lower in the load order wins, and it's listed as a conflict.
+Everything else (`.png .vmb .glsl .bank` …) is copied. If two mods ship the same file that edit the same vanilla value (non-additive), the mod lower in the load order wins, and it's listed as a conflict.
 
 ### Matching your entries to existing ones
 
@@ -172,6 +172,12 @@ The manager figures out which existing entry each of your entries is meant for:
 - **Anything that matches nothing:** **appended** at the end of its parent.
 
 Translation files work a bit differently. In `i18n/<language>/*.vrt` every top-level line is matched by its key, so you can override vanilla text. All of a language's files end up merged into that language's `00-base.vrt`.
+
+Three kinds of lines are merged in their own way:
+
+- **`base_scales.txt`** (a model's default placement size, `chair_a 0.72`) is matched line by line on the model's name, like translations. Ship only your own lines; a line for a game model replaces its size.
+- **Animations (`*.van`)** are matched by each animation's `name`, and a mod's animation replaces the game's one whole. Ship only the animations you change, for example a `skeletons/humanoid.van` with just `idle`. Two mods changing the same animation show up as a conflict.
+- **The vehicle tool's list** (`typeNames` in `CursorBehaviours.txt`'s `mmoCursorBehaviourVehicle`) adds up: ship a `CursorBehaviours.txt` with that record's `name "@Travel Vehicle"` and a `typeNames` line with only your vehicles, and they're added to the game's and other mods' vehicles. The tool offers only the vehicles on that list.
 
 ### Examples
 
@@ -280,10 +286,27 @@ Toolbar items, `.win` buttons and scenario steps can run game commands, and a fe
 
 Errors stop Launch and Apply until the mod is disabled or fixed.
 
+## Models the manager checks
+
+Every `.vmb` a mod ships is read before deploying. [MT2 Tools for Blender](../../mt2-converter/README.md) exports models that pass these checks.
+
+| Found in your mod | Level | Why |
+|---|---|---|
+| A model that uses a material with no `materials/<name>.mat` in the game or any enabled mod | error | The game closes when it loads the model |
+| A file that isn't a valid model, a piece with more than 65,535 vertices, or triangles pointing at missing vertices | error | The game fails to load or draw it |
+| A model in `scenery/<folder>/` where the folder isn't one of the game's 47 scenery types | warning | The game never loads it |
+| A weapon file without an item-level prefix such as `045_` | warning | The game skips it |
+| A `materials/*.mat` whose `texture` file isn't in the game or any enabled mod | error | The game most likely closes: it asserts when it can't open a file |
+
+Saves find scenery and weapons by file name. Don't rename a model after you release it: placed copies turn into placeholders.
+
 ## Testing your mod
 
-1. **Add mod** and pick your `.zip` or your folder's `manifest.json`, or drop the folder onto the window.
-2. Check the **Conflicts** tab. It updates by itself after every change. Errors stop Launch, conflicts and warnings don't.
+1. **Tools -> Add dev mod…** and pick your mod's folder. The manager copies it into its library like **Add mod** does, but remembers where it came from. The mod gets a red wrench in Available Mods.
+   - After changing files in your folder, press the refresh button next to the wrench (or **Tools -> Refresh dev mods** for all of them). The library copy is replaced; your folder is never touched.
+   - **Stop dev mod** on the Details tab forgets the folder and keeps the library copy.
+   - Plain **Add mod** works too, but then you have to add the mod again after every change.
+2. Check the **Issues** tab. It updates by itself after every change. Errors stop Launch, conflicts and warnings don't.
 3. **Tools -> Build details** lists every file the game will get and every renamed id.
 4. **Launch** (or **Apply**, which writes the mods without starting the game), start a **new** game, and check the game's `log.txt`:
    - Mod files are listed under `> Mods:`.

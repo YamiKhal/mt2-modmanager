@@ -9,7 +9,7 @@
 <body>
 
 <!--
-    The page's fixed layout. Lists, the Details tab, the Conflicts tab and dialog contents are
+    The page's fixed layout. Lists, the Details tab, the Issues tab and dialog contents are
     filled in by the scripts in src/features. Buttons name what they do in data-act
     (see src/features/actions.ts).
 -->
@@ -44,6 +44,9 @@
         <div class="menupop" role="menu">
             <button role="menuitem" data-act="deploy">Apply without launching</button>
             <button role="menuitem" data-act="clean">Remove mods from game</button>
+            <hr>
+            <button role="menuitem" data-act="addDevMod">Add dev mod…</button>
+            <button role="menuitem" data-act="refreshDevMods">Refresh dev mods</button>
             <hr>
             <button role="menuitem" data-act="details">Build details…</button>
             <button role="menuitem" data-act="copyGameVersion">Copy game version</button>
@@ -128,12 +131,12 @@
         </div>
     </section>
 
-    <!--right window: Applied Mods / Details / Conflicts-->
+    <!--right window: Applied Mods / Details / Issues-->
     <section class="window" aria-label="Profile">
         <div class="tabs wtitle" role="tablist">
             <button role="tab" data-tab="applied" aria-selected="true">Applied Mods</button>
             <button role="tab" data-tab="desc">Details</button>
-            <button role="tab" data-tab="conflicts">Conflicts <span id="conflictCount" class="count" hidden></span></button>
+            <button role="tab" data-tab="issues">Issues <span id="issueCount" class="count" hidden></span></button>
         </div>
 
         <div class="wbody" id="tab-applied">
@@ -162,7 +165,7 @@
         </div>
 
         <div class="wbody" id="tab-desc" hidden></div>
-        <div class="wbody scroll" id="tab-conflicts" hidden></div>
+        <div class="wbody scroll" id="tab-issues" hidden></div>
     </section>
 </main>
 

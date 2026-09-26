@@ -15,6 +15,11 @@ MODS
   add-all <folder>         add every mod (sub-folder or .zip with a manifest.json) in <folder>
   remove <id>              delete a mod from the library and from every profile
 
+DEV MODS (a mod you're making, kept in its own folder; the library holds a copy)
+  dev add <folder>         add it and remember the folder
+  dev refresh [<id>]       copy the folder into the library again (all dev mods when no id is given)
+  dev stop <id>            forget the folder; the library copy stays
+
 MOD SETTINGS (declared by the mod's config.json)
   settings <id>                    list the mod's settings and their values
   settings <id> set <key> <value>  change one (run deploy afterwards)
@@ -191,6 +196,32 @@ fn main() -> Result<()> {
                     (Some(id), _) => println!("  {} {id}", if r.updated { "updated" } else { "added  " }),
                     (None, e) => println!("  FAILED  {}: {}", r.source.display(), e.unwrap_or_default()),
                 }
+            }
+        }
+        "dev" => {
+            let lib = s.library()?;
+            match (rest.first().map(String::as_str), rest.get(1)) {
+                (Some("add"), Some(src)) => {
+                    let r = lib.import_dev(&PathBuf::from(src))?;
+                    println!("{} dev mod '{}'.", if r.updated { "Updated" } else { "Added" }, r.id.unwrap_or_default());
+                }
+                (Some("refresh"), Some(id)) => {
+                    lib.refresh_dev(id)?;
+                    println!("Refreshed {id}.");
+                }
+                (Some("refresh"), None) => {
+                    for (id, r) in lib.refresh_all_dev() {
+                        match r {
+                            Ok(_) => println!("  refreshed {id}"),
+                            Err(e) => println!("  FAILED    {id}: {e:#}"),
+                        }
+                    }
+                }
+                (Some("stop"), Some(id)) => {
+                    lib.stop_dev(id)?;
+                    println!("{id} is no longer a dev mod.");
+                }
+                _ => bail!("usage: dev add <folder> | dev refresh [<id>] | dev stop <id>"),
             }
         }
         "apply" => {

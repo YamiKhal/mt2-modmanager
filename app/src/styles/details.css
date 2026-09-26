@@ -109,6 +109,11 @@
     background: rgb(255 255 255 / .08);
 }
 
+.desc .tags .tag.state.dev {
+    color: var(--red-text);
+    background: rgb(255 90 90 / .14);
+}
+
 .desc .head .btnrow {
     margin-top: 4px;
 }

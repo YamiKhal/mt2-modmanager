@@ -1,4 +1,4 @@
-use crate::record::Record;
+use crate::record::{Record, Token};
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -39,7 +39,7 @@ struct Siblings {
 
 pub struct Merger<'a> {
     pub file: &'a str,
-    pub i18n: bool,
+    pub keyed_lines: bool,
     pub report: &'a mut Report,
     owners: HashMap<String, (String, Vec<String>)>,
 }
@@ -47,6 +47,12 @@ pub struct Merger<'a> {
 pub const KEY_FIELDS: &[&str] = &["id", "name", "boneName", "slot"];
 pub const REMOVE: &str = "__remove";
 pub const REPLACE: &str = "__replace";
+// Top-level lines keyed by their first word, like i18n strings: `chair_a 0.72`.
+pub const KEYED_LINE_FILES: &[&str] = &["base_scales.txt"];
+// Records a mod replaces whole: merging two animations' keyframes would mix them.
+pub const WHOLE_RECORDS: &[&str] = &["mmoAnimation"];
+// One-line word lists mods add to: the vehicle tool's `typeNames "ship" "balloon" …` lists every vehicle it offers.
+pub const UNION_LINES: &[&str] = &["typeNames"];
 
 
 impl Report {
@@ -115,7 +121,7 @@ impl Siblings {
     }
 }
 
-fn ident(r: &Record, sib: &Siblings, top_level: bool, i18n: bool) -> Ident {
+fn ident(r: &Record, sib: &Siblings, top_level: bool, keyed_lines: bool) -> Ident {
     let label = label_of(r);
     if is_block(r) {
         if let Some((k, v)) = key_of(r) {
@@ -126,7 +132,7 @@ fn ident(r: &Record, sib: &Siblings, top_level: bool, i18n: bool) -> Ident {
         }
         return Ident::None;
     }
-    if top_level && i18n && !label.is_empty() {
+    if top_level && keyed_lines && !label.is_empty() {
         return Ident::Unique(label);
     }
     if top_level || sib.repeats(&label) || label.is_empty() {
@@ -138,8 +144,8 @@ fn ident(r: &Record, sib: &Siblings, top_level: bool, i18n: bool) -> Ident {
 
 impl<'a> Merger<'a> {
     pub fn new(file: &'a str, report: &'a mut Report) -> Self {
-        let i18n = crate::util::i18n_language(file).is_some();
-        Merger { file, i18n, report, owners: HashMap::new() }
+        let keyed_lines = crate::util::i18n_language(file).is_some() || KEYED_LINE_FILES.contains(&file);
+        Merger { file, keyed_lines, report, owners: HashMap::new() }
     }
 
     pub fn apply(&mut self, base: &mut Vec<Record>, patch: &[Record], ns: &str) {
@@ -148,24 +154,24 @@ impl<'a> Merger<'a> {
 
     fn merge_list(&mut self, base: &mut Vec<Record>, patch: &[Record], ns: &str, path: &str, top: bool) {
         let sib = Siblings::of(base, patch);
-        let build_index = |base: &Vec<Record>, i18n: bool| {
+        let build_index = |base: &Vec<Record>, keyed_lines: bool| {
             let mut idx: HashMap<Ident, usize> = HashMap::new();
             for (i, b) in base.iter().enumerate() {
-                let id = ident(b, &sib, top, i18n);
+                let id = ident(b, &sib, top, keyed_lines);
                 if id != Ident::None {
                     idx.entry(id).or_insert(i);
                 }
             }
             idx
         };
-        let mut index = build_index(base, self.i18n);
+        let mut index = build_index(base, self.keyed_lines);
         for p in patch {
             if p.label.as_deref() == Some(REMOVE) {
                 self.remove(base, p, ns, path, top);
-                index = build_index(base, self.i18n);
+                index = build_index(base, self.keyed_lines);
                 continue;
             }
-            let id = ident(p, &sib, top, self.i18n);
+            let id = ident(p, &sib, top, self.keyed_lines);
             let here = format!("{path}/{}", id.describe());
             let found = if id == Ident::None { None } else { index.get(&id).copied() };
             match found {
@@ -180,7 +186,8 @@ impl<'a> Merger<'a> {
                 }
                 Some(i) => {
                     if is_block(p) {
-                        let replace = p.children.iter().any(|c| c.label.as_deref() == Some(REPLACE));
+                        let replace = p.children.iter().any(|c| c.label.as_deref() == Some(REPLACE))
+                            || p.label.as_deref().is_some_and(|l| WHOLE_RECORDS.contains(&l));
                         if replace {
                             let mut rec = p.clone();
                             strip_directives(&mut rec);
@@ -197,6 +204,9 @@ impl<'a> Merger<'a> {
                             base[i].children = children;
                             base[i].had_block = true;
                         }
+                    } else if matches!(id, Ident::Unique(_)) && p.label.as_deref().is_some_and(|l| UNION_LINES.contains(&l)) {
+                        base[i].tokens = union_tokens(&base[i], p);
+                        self.owners.insert(here, (ns.to_string(), value_text(&base[i])));
                     } else if matches!(id, Ident::Unique(_)) {
                         let new = value_text(p);
                         if value_text(&base[i]) != new {
@@ -267,6 +277,20 @@ impl<'a> Merger<'a> {
     }
 }
 
+fn union_tokens(base: &Record, patch: &Record) -> Vec<Token> {
+    let mut tokens: Vec<Token> = base.values().into_iter().cloned().collect();
+    for token in patch.values() {
+        if !tokens.iter().any(|t| t.text() == token.text()) {
+            tokens.push(token.clone());
+        }
+    }
+    if base.tokens.last().is_some_and(Token::is_semicolon) {
+        tokens.push(Token::Semicolon);
+    }
+
+    tokens
+}
+
 fn show(v: &[String]) -> String {
     if v.is_empty() {
         "(block)".into()
@@ -315,6 +339,80 @@ mod tests {
         assert_eq!(base[0].prop("windowName"), Some("daily_finance"));
         assert_eq!(base[0].prop("iconName"), Some("icon-x"));
         assert_eq!(base[2].prop("name"), Some("@Cash"));
+    }
+
+    #[test]
+    fn base_scales_lines_replace_by_name() {
+        let mut base = recs("chair_a 0.72
+bench_a 0.72
+");
+        let mut rep = Report::default();
+        let mut m = Merger::new("base_scales.txt", &mut rep);
+        m.apply(&mut base, &recs("chair_a 0.9
+mymod_rock 0.5
+"), "a");
+        assert_eq!(text(&base), "chair_a 0.9
+bench_a 0.72
+mymod_rock 0.5
+");
+    }
+
+    #[test]
+    fn animations_replace_whole() {
+        let old = "mmoAnimation
+{
+	name \"idle\"
+	timeline
+	{
+		mmoAnimationNodeTimeline
+		{
+			nodeName \"head\"
+		}
+		mmoAnimationNodeTimeline
+		{
+			nodeName \"torso\"
+		}
+	}
+}
+mmoAnimation
+{
+	name \"run\"
+}
+";
+        let new = "mmoAnimation
+{
+	name \"idle\"
+	timeline
+	{
+		mmoAnimationNodeTimeline
+		{
+			nodeName \"hat\"
+		}
+	}
+}
+";
+        let mut base = recs(old);
+        let mut rep = Report::default();
+        let mut m = Merger::new("skeletons/humanoid.van", &mut rep);
+        m.apply(&mut base, &recs(new), "a");
+        assert_eq!(base.len(), 2);
+        let timelines = &base[0].children.iter().find(|c| c.label.as_deref() == Some("timeline")).unwrap().children;
+        assert_eq!(timelines.len(), 1);
+        assert_eq!(timelines[0].prop("nodeName"), Some("hat"));
+        assert_eq!(base[1].prop("name"), Some("run"));
+    }
+
+    #[test]
+    fn vehicle_names_add_up() {
+        let mut base = recs("mmoCursorBehaviourVehicle\n{\n\tname \"@Travel Vehicle\"\n\ttypeNames \"ship\" \"balloon\"\n\ticonName \"icon-vehicle\"\n}\n");
+        let mut rep = Report::default();
+        let mut m = Merger::new("CursorBehaviours.txt", &mut rep);
+        let patch = |id: &str| recs(&format!("mmoCursorBehaviourVehicle\n{{\n\tname \"@Travel Vehicle\"\n\ttypeNames \"{id}\"\n}}\n"));
+        m.apply(&mut base, &patch("a_blimp"), "a");
+        m.apply(&mut base, &patch("b_raft"), "b");
+        assert_eq!(value_text(&base[0].children[1]), vec!["ship", "balloon", "a_blimp", "b_raft"]);
+        assert_eq!(base[0].prop("iconName"), Some("icon-vehicle"));
+        assert_eq!(rep.count(Level::Conflict), 0);
     }
 
     #[test]

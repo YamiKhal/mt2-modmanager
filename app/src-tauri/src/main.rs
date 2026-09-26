@@ -86,6 +86,28 @@ async fn adopt_mod(path: String) -> Res<Imported> {
 }
 
 #[tauri::command]
+async fn add_dev_mod(path: String) -> Res<Imported> {
+    session().library().and_then(|l| l.import_dev(&PathBuf::from(path))).map_err(err)
+}
+
+#[tauri::command]
+async fn refresh_dev_mods(ids: Vec<String>) -> Res<Vec<Imported>> {
+    let lib = session().library().map_err(err)?;
+    let ids = if ids.is_empty() { lib.load_state().dev_sources.into_keys().collect() } else { ids };
+    Ok(ids
+        .into_iter()
+        .map(|id| {
+            lib.refresh_dev(&id).unwrap_or_else(|e| Imported { source: PathBuf::from(&id), id: Some(id), updated: false, error: Some(err(e)) })
+        })
+        .collect())
+}
+
+#[tauri::command]
+async fn stop_dev_mod(id: String) -> Res<()> {
+    session().library().and_then(|l| l.stop_dev(&id)).map_err(err)
+}
+
+#[tauri::command]
 async fn remove_mod(id: String) -> Res<()> {
     session().library().and_then(|l| l.remove(&id)).map_err(err)
 }
@@ -224,6 +246,9 @@ fn main() {
             unapply_mods,
             add_mods,
             adopt_mod,
+            add_dev_mod,
+            refresh_dev_mods,
+            stop_dev_mod,
             remove_mod,
             set_mod_settings,
             mod_icon,

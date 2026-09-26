@@ -9,7 +9,7 @@ export default defineConfig({
     build: {
         target: ["es2022", "chrome110", "safari15"],
         outDir: "dist",
-        // Minifying rewrites colours like rgb(6 60 100 / .3) to hex, which rounds the alpha.
+        // Minifying rewrites colors like rgb(6 60 100 / .3) to hex, which rounds the alpha.
         // The stylesheet is small, so it ships as written.
         cssMinify: false,
         emptyOutDir: true,

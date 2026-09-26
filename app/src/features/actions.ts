@@ -8,6 +8,7 @@ import { openAbout } from "./about";
 import { pickAndAddFolder, pickAndAddMods } from "./addMods";
 import { openBuildDetails } from "./buildDetails";
 import { copyGameVersion } from "./copyGameVersion";
+import { pickAndAddDevMod, refreshDevMods } from "./devMods";
 import { applyToGame, launch, removeModsFromGame } from "./gameActions";
 import {
     applySelectedMods,
@@ -33,6 +34,8 @@ const ACTIONS: Record<string, () => unknown> = {
     deploy: applyToGame,
     launch,
     clean: removeModsFromGame,
+    addDevMod: pickAndAddDevMod,
+    refreshDevMods: () => refreshDevMods(),
     details: openBuildDetails,
     copyGameVersion,
     settings: openSettingsDialog,

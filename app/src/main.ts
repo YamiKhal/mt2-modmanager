@@ -6,7 +6,7 @@ import { wireActions } from "./features/actions";
 import { wireFileDrop } from "./features/addMods";
 import { renderAppliedMods } from "./features/appliedMods";
 import { renderAvailableMods, wireAvailableMods } from "./features/availableMods";
-import { renderConflicts } from "./features/conflicts";
+import { renderIssues } from "./features/issues";
 import { updateGameButtons } from "./features/gameButtons";
 import { wireGameLock } from "./features/gameLock";
 import { showGameUpdatedNotice } from "./features/gameUpdated";
@@ -29,7 +29,7 @@ onStatusChanged(renderModDetails);
 onStatusChanged(showGameUpdatedNotice);
 
 onPlanChanged(updateGameButtons);
-onPlanChanged(renderConflicts);
+onPlanChanged(renderIssues);
 
 wireMenus();
 wireTabs();

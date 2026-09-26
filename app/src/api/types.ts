@@ -59,6 +59,7 @@ export interface LibraryMod {
     config: ConfigOption[];
     config_error: string | null;
     settings: ResolvedSettings;
+    dev_source: string | null;
 }
 
 export interface GamePaths {

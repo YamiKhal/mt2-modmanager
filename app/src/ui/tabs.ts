@@ -1,8 +1,8 @@
 import { byId, queryAll } from "../util/dom";
 
-export type MainTab = "applied" | "desc" | "conflicts";
+export type MainTab = "applied" | "desc" | "issues";
 
-const MAIN_TABS: MainTab[] = ["applied", "desc", "conflicts"];
+const MAIN_TABS: MainTab[] = ["applied", "desc", "issues"];
 const BUILD_DETAILS_TABS = ["report", "files", "renames", "paths"] as const;
 
 

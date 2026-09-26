@@ -5,10 +5,13 @@ import { iconHtml } from "../ui/modIcons";
 import { showTab } from "../ui/tabs";
 import { byId } from "../util/dom";
 import { escapeHtml } from "../util/text";
+import { refreshDevMods } from "./devMods";
 import { applyMods } from "./modActions";
 import { renderModDetails } from "./modDetails";
 
 const WARNING_ICON = `<path fill-rule="evenodd" d="M8 1.2 15.4 14.4H.6zM7.2 5.6v4.6h1.6V5.6zm0 5.8v1.6h1.6v-1.6z"/>`;
+const WRENCH_ICON = `<path d="M14.6 3.9 12.3 6.2 10.2 5.8 9.8 3.7 12.1 1.4A4.2 4.2 0 0 0 7.2 6.7L1.5 12.4a1.5 1.5 0 0 0 2.1 2.1L9.3 8.8a4.2 4.2 0 0 0 5.3-4.9z"/>`;
+const REFRESH_ICON = `<path d="M12.9 8.6a5 5 0 1 1-1.5-3.7" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13.6 2.4v4.8H8.8z"/>`;
 
 
 export function renderAvailableMods(): void {
@@ -61,6 +64,7 @@ function createRow(mod: LibraryMod, shownMods: LibraryMod[]): HTMLLIElement {
     row.classList.toggle("applied", mod.applied);
     row.classList.toggle("broken", !manifest);
     row.classList.toggle("sel", selected);
+    row.classList.toggle("dev", Boolean(mod.dev_source));
     row.setAttribute("role", "option");
     row.setAttribute("aria-selected", String(selected));
 
@@ -70,7 +74,8 @@ function createRow(mod: LibraryMod, shownMods: LibraryMod[]): HTMLLIElement {
         row.title = `${manifest.name} (${manifest.id})`;
         row.innerHTML = `
             ${iconHtml(mod)}
-            <div class="rtitle"><b><em>${escapeHtml(manifest.name)}</em>${versionMarkHtml(manifest)}</b><span>${byLine}</span></div>
+            <div class="rtitle"><b><em>${escapeHtml(manifest.name)}</em>${devMarkHtml(mod)}${versionMarkHtml(manifest)}</b><span>${byLine}</span></div>
+            ${devRefreshHtml(mod)}
             <span class="rver">${escapeHtml(manifest.version)}</span>`;
     } else {
         row.title = mod.error ?? "";
@@ -82,6 +87,10 @@ function createRow(mod: LibraryMod, shownMods: LibraryMod[]): HTMLLIElement {
             <span class="rver"></span>`;
     }
 
+    row.querySelector(".devrefresh")?.addEventListener("click", (event) => {
+        event.stopPropagation();
+        void refreshDevMods([manifest?.id ?? ""]);
+    });
     row.addEventListener("click", (event) => selectRow(key, event, shownMods));
     row.addEventListener("dblclick", () => {
         if (manifest && !mod.applied) {
@@ -92,6 +101,26 @@ function createRow(mod: LibraryMod, shownMods: LibraryMod[]): HTMLLIElement {
     });
 
     return row;
+}
+
+function devMarkHtml(mod: LibraryMod): string {
+    if (!mod.dev_source) {
+        return "";
+    }
+
+    const tooltip = escapeHtml(`Dev mod from ${mod.dev_source}`);
+
+    return `<svg class="vmark dev" viewBox="0 0 16 16" role="img" aria-label="${tooltip}"><title>${tooltip}</title>${WRENCH_ICON}</svg>`;
+}
+
+function devRefreshHtml(mod: LibraryMod): string {
+    if (!mod.dev_source) {
+        return "";
+    }
+
+    const tooltip = escapeHtml(`Copy ${mod.dev_source} into the library again`);
+
+    return `<button class="btn sq small devrefresh" title="${tooltip}" aria-label="Refresh dev mod"><svg viewBox="0 0 16 16" aria-hidden="true">${REFRESH_ICON}</svg></button>`;
 }
 
 function versionMarkHtml(manifest: Manifest): string {

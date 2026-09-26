@@ -2,7 +2,7 @@ use std::path::{Component, Path};
 
 pub const RECORD_EXTS: &[&str] = &[
     "txt", "cfg", "win", "def", "vrt", "costume", "variant", "conf", "defaults", "mat", "block",
-    "prototype", "adv", "sequence", "vsprite", "tcolor", "tshape", "tstyle",
+    "prototype", "adv", "sequence", "vsprite", "tcolor", "tshape", "tstyle", "van",
 ];
 
 

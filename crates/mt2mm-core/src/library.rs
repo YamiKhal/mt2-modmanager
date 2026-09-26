@@ -23,6 +23,9 @@ pub struct Profile {
 pub struct State {
     pub active: String,
     pub profiles: BTreeMap<String, Profile>,
+    // Mods added with "Add dev mod": id -> the author's own folder, re-imported on refresh.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub dev_sources: BTreeMap<String, PathBuf>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -37,6 +40,7 @@ pub struct LibraryMod {
     pub config: Vec<ConfigOption>,
     pub config_error: Option<String>,
     pub settings: Resolved,
+    pub dev_source: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -57,7 +61,11 @@ pub const DEFAULT_PROFILE: &str = "Default";
 
 impl Default for State {
     fn default() -> Self {
-        State { active: DEFAULT_PROFILE.into(), profiles: BTreeMap::from([(DEFAULT_PROFILE.into(), Profile::default())]) }
+        State {
+            active: DEFAULT_PROFILE.into(),
+            profiles: BTreeMap::from([(DEFAULT_PROFILE.into(), Profile::default())]),
+            dev_sources: BTreeMap::new(),
+        }
     }
 }
 
@@ -74,7 +82,7 @@ impl State {
         let disabled = strs("disabled");
         let mods = strs("order").into_iter().map(|id| ProfileEntry { enabled: !disabled.contains(&id), id }).collect();
         let p = Profile { mods, ..Default::default() };
-        Some(State { active: DEFAULT_PROFILE.into(), profiles: BTreeMap::from([(DEFAULT_PROFILE.into(), p)]) })
+        Some(State { active: DEFAULT_PROFILE.into(), profiles: BTreeMap::from([(DEFAULT_PROFILE.into(), p)]), dev_sources: BTreeMap::new() })
     }
 
     fn fix(&mut self) {
@@ -175,7 +183,9 @@ impl Library {
                     .as_ref()
                     .map(|m| modconfig::resolve(&config, saved.get(&m.id), &m.version))
                     .unwrap_or_default();
+                let dev_source = manifest.as_ref().and_then(|m| st.dev_sources.get(&m.id)).cloned();
                 mods.push(LibraryMod {
+                    dev_source,
                     config,
                     config_error,
                     settings,
@@ -232,6 +242,7 @@ impl Library {
             let mut seen = Vec::new();
             p.mods.retain(|e| if seen.contains(&e.id) { false } else { seen.push(e.id.clone()); true });
         }
+        st.dev_sources.retain(|id, _| ids.contains(id));
         self.save_state(&st)?;
         Ok(st)
     }
@@ -369,6 +380,49 @@ impl Library {
         let name = src.file_name().context("no folder name")?.to_string_lossy().into_owned();
         let (id, updated) = self.import_dir(src, &name, move_folder)?;
         Ok(Imported { source: src.into(), id: Some(id), updated, error: None })
+    }
+
+    // A dev mod stays in the author's folder; the library keeps a copy that `refresh_dev` replaces.
+    pub fn import_dev(&self, src: &Path) -> Result<Imported> {
+        let dir = if src.file_name().is_some_and(|n| n == MANIFEST_FILE) { src.parent().context("manifest.json has no folder")? } else { src };
+        if !dir.join(MANIFEST_FILE).is_file() {
+            bail!("a dev mod is a folder with a manifest.json, and {} has none", dir.display());
+        }
+        let lib = self.mods_dir();
+        if lib.is_dir() && dir.canonicalize()?.starts_with(lib.canonicalize()?) {
+            bail!("pick the mod's own folder, not its copy in the mod library");
+        }
+        let dir = std::path::absolute(dir)?;
+        let imported = self.import(&dir, false)?;
+        let id = imported.id.clone().context("the mod has no id")?;
+        let mut st = self.load_state();
+        st.dev_sources.insert(id, dir);
+        self.save_state(&st)?;
+        Ok(imported)
+    }
+
+    pub fn refresh_dev(&self, id: &str) -> Result<Imported> {
+        let src = self.load_state().dev_sources.get(id).cloned().with_context(|| format!("'{id}' is not a dev mod"))?;
+        if !src.join(MANIFEST_FILE).is_file() {
+            bail!("{} has no manifest.json any more", src.display());
+        }
+        let imported = self.import(&src, false)?;
+        let mut st = self.load_state();
+        st.dev_sources.remove(id);
+        st.dev_sources.insert(imported.id.clone().context("the mod has no id")?, src);
+        self.save_state(&st)?;
+        Ok(imported)
+    }
+
+    pub fn refresh_all_dev(&self) -> Vec<(String, Result<Imported>)> {
+        let ids: Vec<String> = self.load_state().dev_sources.keys().cloned().collect();
+        ids.into_iter().map(|id| { let r = self.refresh_dev(&id); (id, r) }).collect()
+    }
+
+    pub fn stop_dev(&self, id: &str) -> Result<()> {
+        let mut st = self.load_state();
+        st.dev_sources.remove(id).with_context(|| format!("'{id}' is not a dev mod"))?;
+        self.save_state(&st)
     }
 
     pub fn import_all(&self, dir: &Path) -> Result<Vec<Imported>> {
@@ -572,6 +626,38 @@ mod tests {
         std::fs::create_dir_all(&d).unwrap();
         std::fs::write(d.join(MANIFEST_FILE), format!(r#"{{"id":"{id}","name":"{id} mod","version":"{version}"}}"#)).unwrap();
         d
+    }
+
+    #[test]
+    fn dev_mod_refreshes_from_its_own_folder() {
+        let root = tmp("dev");
+        let src = make_mod(&root.join("work"), "mine", "mine", "1");
+        let lib = Library::new(&root.join("mgr"));
+        lib.import_dev(&src.join(MANIFEST_FILE)).unwrap();
+        let listed = lib.list().unwrap();
+        assert_eq!(listed[0].dev_source.as_deref(), Some(std::path::absolute(&src).unwrap().as_path()));
+        assert!(listed[0].applied);
+
+        std::fs::write(src.join("new.txt"), "x").unwrap();
+        assert!(lib.refresh_dev("mine").unwrap().updated);
+        assert!(lib.mods_dir().join("mine").join("new.txt").is_file());
+        assert!(src.join("new.txt").is_file());
+
+        assert!(lib.import_dev(&lib.mods_dir().join("mine")).is_err());
+        lib.stop_dev("mine").unwrap();
+        assert!(lib.list().unwrap()[0].dev_source.is_none());
+        assert!(lib.refresh_dev("mine").is_err());
+    }
+
+    #[test]
+    fn removing_a_dev_mod_forgets_its_folder() {
+        let root = tmp("devremove");
+        let src = make_mod(&root.join("work"), "mine", "mine", "1");
+        let lib = Library::new(&root.join("mgr"));
+        lib.import_dev(&src).unwrap();
+        lib.remove("mine").unwrap();
+        assert!(lib.load_state().dev_sources.is_empty());
+        assert!(src.join(MANIFEST_FILE).is_file());
     }
 
     #[test]

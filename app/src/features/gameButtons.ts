@@ -13,7 +13,7 @@ export function updateGameButtons(): void {
     const deployState = status.deploy_state;
     const inSync = deployState === "current" || (deployState === "none" && enabledCount === 0);
     const hasErrors = buildErrorCount() > 0;
-    const errorReason = appState.planError ?? "Fix the errors on the Conflicts tab first";
+    const errorReason = appState.planError ?? "Fix the errors on the Issues tab first";
 
     const applyButton = byId<HTMLButtonElement>("btnApplyGame");
 

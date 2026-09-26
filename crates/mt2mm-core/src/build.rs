@@ -4,7 +4,7 @@ use crate::merge::{strip_all_directives, Level, Merger, Report};
 use crate::modconfig::{self, CONFIG_FILE};
 use crate::namespace::{self, VanillaIds};
 use crate::record::{self, Document, Record};
-use crate::safety;
+use crate::{models, safety, textures};
 use crate::util::{i18n_language, is_record_path, rel_string};
 use crate::vanilla::Vanilla;
 use anyhow::Result;
@@ -213,6 +213,12 @@ pub fn plan(vanilla: &Vanilla, mods: &[LibraryMod], game_version: Option<String>
             plan.renames.push(Rename { mod_id: man.id.clone(), kind: kind.name().into(), from: from.clone(), to: to.clone() });
         }
         loaded.push(mf);
+    }
+    let materials = models::available_materials(vanilla, loaded.iter().flat_map(|mf| mf.records.keys().chain(mf.opaque.keys())));
+    let files = textures::available_files(vanilla.paths(), loaded.iter().flat_map(|mf| mf.records.keys().chain(mf.opaque.keys())));
+    for mf in &loaded {
+        models::check_mod_models(&mf.manifest.id, &mf.opaque, &materials, &mut plan.report)?;
+        textures::check_mod_textures(&mf.manifest.id, &mf.records, &files, &mut plan.report);
     }
 
     let target_of = |rel: &str| -> String {

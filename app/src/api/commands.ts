@@ -49,6 +49,18 @@ export function adoptMod(path: string): Promise<Imported> {
     return invoke<Imported>("adopt_mod", { path });
 }
 
+export function addDevMod(path: string): Promise<Imported> {
+    return invoke<Imported>("add_dev_mod", { path });
+}
+
+export function refreshDevMods(ids: string[]): Promise<Imported[]> {
+    return invoke<Imported[]>("refresh_dev_mods", { ids });
+}
+
+export function stopDevMod(id: string): Promise<void> {
+    return invoke("stop_dev_mod", { id });
+}
+
 export function removeModFromLibrary(id: string): Promise<void> {
     return invoke("remove_mod", { id });
 }

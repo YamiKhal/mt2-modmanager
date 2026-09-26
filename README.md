@@ -32,8 +32,10 @@ Merging is required because the if mods were to edit original game files (vanill
    `.zip` files and folders onto the window.
 4. In **Applied Mods**, drag mods (or use ▲/▼) to set the load order and tick the ones to use.
 5. **Add to profile** adds the selected available mods to the profile; ✕ takes one out again.
-6. **Conflicts** will display any issue with your applied mods.
+6. **Issues** lists errors, conflicts and warnings in your applied mods.
 7. **Launch** will launch the game with the applied mods and their configurations.
+
+Making a mod? **Tools -> Add dev mod…** keeps it in your own folder: a refresh button next to it copies your latest changes in. See [docs/MODDING.md](docs/MODDING.md#testing-your-mod).
 
 ## Configs
 
