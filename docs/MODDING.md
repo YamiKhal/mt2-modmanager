@@ -119,15 +119,15 @@ Then declare the key in a `config.json` next to your `manifest.json`:
 The settings show up on the mod's **Details** tab. When the mod is applied, the manager puts each value where its `<key>` is: either the default, or whatever the player chose.
 
 - **key (required):** The name you write between `<` and `>`. 1–64 characters of `A-Z a-z 0-9 _ - .`, starting with a letter.
-- **type (required):** `int` (whole number), `float` (number), `bool` (`true`/`false`), `string` (text) or `choice` (one of `options`).
+- **type (required):** `int` (whole number), `float` (number), `bool` (`true`/`false`), `string` (text), `choice` (one of `options`) or `color` (a color picker, with the hex code shown and typeable, like `#FF8800`).
 - **label:** The name the player sees. Uses the key if you leave it out.
-- **default:** The value used until the player changes it. If you leave it out: `min` or 0, `false`, empty text, or the first option.
+- **default:** The value used until the player changes it. If you leave it out: `min` or 0, `false`, empty text, the first option, or white (`#FFFFFF`).
 - **description:** Help text, shown when the player hovers over the label.
 - **group:** A heading. Settings with the same group are shown together under it, in file order.
 - **input:** `field` (default) or `slider`. A slider needs `int` or `float` and both `min` and `max`.
 - **min, max, step:** Limits for numbers.
 - **unit:** Shown after a number, e.g. `%` or `coins`.
-- **options (required for choice):** The choices, either `"value"` or `{ "value": "…", "label": "…" }`. The value goes into your file, the label is what the player sees.
+- **options (required for choice):** The choices, either `"value"` or `{ "value": "…", "label": "…" }`. The value goes into your file, the label is what the player sees. An option can also pick files, see [Choices that pick files](#choices-that-pick-files).
 
 ### What gets written
 
@@ -135,10 +135,31 @@ The settings show up on the mod's **Details** tab. When the mod is applied, the 
 - `bool` is written as `true` or `false`.
 - `string` is written as typed, except `"` becomes `'`, `\` becomes `/`, and line breaks are removed. That way `name "<my_name>";` stays valid.
 - `choice` is written exactly as the option's `value`.
+- `color` is written the way the game's text files write colors: red, green, blue and alpha from 0 to 1 (`#FF8000` becomes `1.000 0.502 0.000 1`). So `color <marker_color>` in a material, or `Color <tint>;` in a data file, takes the player's color.
 
 Placeholders are filled in all merged text files (see [How text files are merged](#how-text-files-are-merged)), translations included. Ids that end up in a placeholder's value get prefixed like any other id. Images, models, shaders and other copied files are left alone.
 
 **Mods with a native plugin** can read their settings in code too (`plugin::setting<int>("key")`, [LOADER_MODDING.md](../../LOADER_MODDING.md#settings-the-player-picks-configjson)): the manager puts `config.json` and the player's values (`settings.json`) next to the plugin when it deploys. A setting only the plugin reads needs no `<key>` in any text file.
+
+### Choices that pick files
+
+A choice's option can put one of your mod's files in place of another, for files no placeholder can reach (models, pictures, sounds):
+
+```json
+{
+  "key": "marker",
+  "label": "Quest marker",
+  "type": "choice",
+  "default": "star",
+  "options": [
+    { "value": "star", "label": "Star", "files": { "QuestGiver.vmb": "markers/star.vmb" } },
+    { "value": "question", "label": "Question mark", "files": { "QuestGiver.vmb": "markers/question.vmb" } },
+    { "value": "game", "label": "The game's own" }
+  ]
+}
+```
+
+`files` maps where a file goes (as if it were in your mod's folder, here replacing the game's `QuestGiver.vmb`) to the file in your mod that goes there. Only the picked option's files are used. The files any option names are never copied on their own, so `markers/` doesn't end up in the game. A picked text file is merged, and its placeholders are filled, like your other text files. A file the choice names that your mod doesn't have is an error. So is a place two settings both fill.
 
 ### Checks
 
