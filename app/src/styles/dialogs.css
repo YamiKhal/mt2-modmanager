@@ -83,3 +83,22 @@ ul.plain li {
     padding: 6px 10px;
     background: var(--well);
 }
+
+.form label.checkrow {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+ul.nativelist li {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+}
+
+ul.nativelist .files {
+    color: var(--muted);
+    font-size: .9em;
+}

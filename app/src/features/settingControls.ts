@@ -32,6 +32,9 @@ export function defaultValueText(option: ConfigOption): string {
         case "string":
             return option.default === "" ? "empty" : `“${option.default}”`;
 
+        case "color":
+            return String(option.default);
+
         default:
             return formatNumber(option, option.default) + (option.unit ? " " + option.unit : "");
     }
@@ -51,6 +54,9 @@ export function controlHtml(option: ConfigOption, value: SettingValue): string {
         case "string":
             return `<input type="text" data-key="${key}" value="${escapeHtml(value)}" spellcheck="false">`;
 
+        case "color":
+            return colorHtml(option, key, value);
+
         default:
             return numberHtml(option, key, value);
     }
@@ -66,6 +72,28 @@ function choiceHtml(option: ConfigOption, key: string, value: SettingValue): str
         .join("");
 
     return `<select data-key="${key}">${choices}</select>`;
+}
+
+function colorHtml(option: ConfigOption, key: string, value: SettingValue): string {
+    const hex = escapeHtml(String(value));
+
+    return `
+        <input type="color" class="swatch" data-key="${key}" value="${hex.toLowerCase()}" aria-label="${escapeHtml(option.label)}">
+        <input type="text" class="hex" data-key="${key}" value="${hex}" maxlength="7" spellcheck="false" title="Hex code">`;
+}
+
+export function hexColor(text: string): string | null {
+    const digits = text.trim().replace(/^#/, "");
+
+    if (/^[0-9a-f]{3}$/i.test(digits)) {
+        return "#" + [...digits].map((digit) => digit + digit).join("").toUpperCase();
+    }
+
+    if (/^[0-9a-f]{6}$/i.test(digits)) {
+        return "#" + digits.toUpperCase();
+    }
+
+    return null;
 }
 
 function numberHtml(option: ConfigOption, key: string, value: SettingValue): string {

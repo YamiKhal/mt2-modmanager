@@ -138,3 +138,8 @@ tr:nth-child(even) td {
 .report .where {
     color: var(--muted);
 }
+
+.issuelist .issueaction {
+    display: block;
+    margin-top: 4px;
+}

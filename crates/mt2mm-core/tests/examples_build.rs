@@ -61,3 +61,47 @@ fn example_mods_build_cleanly() {
     assert!(inns.contains("command \"add_cash 25000\";"));
     assert!(i18n.contains("{button_hl}$25000{clear_hl}"));
 }
+
+
+#[test]
+fn choices_put_files_in_place_and_colors_fill_text() {
+    let Ok(data) = std::env::var("MT2_GAMEDATA") else {
+        eprintln!("MT2_GAMEDATA not set; skipping");
+        return;
+    };
+    let tmp = std::env::temp_dir().join(format!("mt2mm-choice-test-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    let source = tmp.join("source");
+    std::fs::create_dir_all(source.join("markers")).unwrap();
+    std::fs::create_dir_all(source.join("materials")).unwrap();
+    std::fs::write(source.join("manifest.json"), r#"{"id": "picker", "name": "Picker", "version": "1.0.0"}"#).unwrap();
+    std::fs::write(
+        source.join("config.json"),
+        r##"[
+            {"key": "shape", "type": "choice", "default": "a", "options": [
+                {"value": "a", "files": {"picked.bin": "markers/a.bin"}},
+                {"value": "b", "files": {"picked.bin": "markers/b.bin"}}
+            ]},
+            {"key": "tint", "type": "color", "default": "#FF8000"}
+        ]"##,
+    )
+    .unwrap();
+    std::fs::write(source.join("markers/a.bin"), "A").unwrap();
+    std::fs::write(source.join("markers/b.bin"), "B").unwrap();
+    std::fs::write(source.join("materials/picker_tint.mat"), "Material {\n\tcolor <tint>\n}\n").unwrap();
+
+    let lib = Library::new(&tmp.join("library"));
+    lib.import(&source, false).unwrap();
+    let changes = [("shape".to_string(), serde_json::json!("b"))].into_iter().collect();
+    lib.set_settings("picker", &changes, &[]).unwrap();
+    let vanilla = Vanilla::open(&PathBuf::from(data)).unwrap();
+    let plan = build::plan(&vanilla, &lib.list().unwrap(), None).unwrap();
+
+    assert_eq!(plan.report.count(Level::Error), 0, "{:#?}", plan.report);
+    assert_eq!(plan.report.count(Level::Warning), 0, "{:#?}", plan.report);
+    let file = |rel: &str| plan.files.iter().find(|f| f.rel == rel).map(|f| String::from_utf8(f.read().unwrap()).unwrap());
+    assert_eq!(file("picked.bin").as_deref(), Some("B"), "the picked option's file");
+    assert!(file("markers/a.bin").is_none() && file("markers/b.bin").is_none(), "option files only go where they're picked");
+    assert!(file("materials/picker_tint.mat").unwrap().contains("color 1.000 0.502 0.000 1"));
+    let _ = std::fs::remove_dir_all(&tmp);
+}

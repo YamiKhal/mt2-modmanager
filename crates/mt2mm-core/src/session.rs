@@ -1,10 +1,13 @@
 use crate::build::{self, BuildPlan};
 use crate::deploy;
 use crate::library::{unmanaged_mods, Library, LibraryMod};
+use crate::loader::{self, LoaderOverview};
+use crate::merge::Level;
 use crate::paths::{self, GamePaths};
 use crate::vanilla::Vanilla;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -12,6 +15,9 @@ pub struct Config {
     pub install_dir: Option<PathBuf>,
     pub data: Option<PathBuf>,
     pub profile_dir: Option<PathBuf>,
+    // Where the MT2 Loader's files are (zlib1.dll and mt2loader\). Default: the loader folder next to the manager.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub loader: Option<PathBuf>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -29,6 +35,7 @@ pub struct Status {
     pub deployed_mods: Vec<String>,
     pub problems: Vec<String>,
     pub game_update: Option<GameUpdate>,
+    pub loader: Option<LoaderOverview>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -37,8 +44,25 @@ pub struct GameUpdate {
     pub version: Option<String>,
 }
 
+// The mods of a load order that bring native code, and whether the player chose not to be asked about them again.
+#[derive(Debug, Clone, Serialize)]
+pub struct NativeRequest {
+    pub mods: Vec<NativeMod>,
+    pub remembered: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct NativeMod {
+    pub id: String,
+    pub name: String,
+    pub files: Vec<String>,
+}
+
+pub const INSTALL_LOADER_ACTION: &str = "install_loader";
+
 pub struct Session {
     pub paths: GamePaths,
+    pub loader_source: Option<PathBuf>,
 }
 
 
@@ -106,7 +130,9 @@ impl Session {
                 p.profile_dir = Some(d.clone());
             }
         }
-        Session { paths: p }
+        let loader_source = overrides.loader.clone().or(cfg.loader.clone());
+
+        Session { paths: p, loader_source }
     }
 
     pub fn library(&self) -> Result<Library> {
@@ -173,6 +199,7 @@ impl Session {
             deployed,
             game_version,
             game_update,
+            loader: self.loader_overview(),
             unmanaged: mod_dir.as_deref().map(unmanaged_mods).unwrap_or_default(),
             mod_dir,
             manager_dir: self.paths.manager_dir(),
@@ -201,13 +228,62 @@ impl Session {
         let mods = lib.list()?;
         let vanilla = self.vanilla()?;
         let gv = self.paths.profile_dir.as_deref().and_then(paths::game_version);
-        build::plan(&vanilla, &mods, gv)
+        let mut plan = build::plan(&vanilla, &mods, gv)?;
+
+        if let Some(problem) = loader::missing_for(self.paths.install_dir.as_deref(), &plan.loader) {
+            for mod_id in plan.loader.needed_by.clone() {
+                plan.report.push_action(Level::Warning, &mod_id, problem.clone(), INSTALL_LOADER_ACTION);
+            }
+        }
+
+        Ok(plan)
     }
 
-    pub fn deploy(&self) -> Result<BuildPlan> {
+    // `approved` holds the native-code mods the player approved for this one action.
+    pub fn deploy(&self, approved: &BTreeSet<String>) -> Result<BuildPlan> {
         let plan = self.plan()?;
+        self.ensure_native_approved(&plan, approved)?;
         self.install(&plan)?;
         Ok(plan)
+    }
+
+    pub fn native_request(&self) -> Result<NativeRequest> {
+        let plan = self.plan()?;
+        let native_mods = plan.loader.native_mods();
+        let library = self.library()?;
+        let names = library.list()?;
+        let name_of = |id: &str| {
+            names.iter().find(|m| m.id() == Some(id)).and_then(|m| m.manifest.as_ref()).map(|m| m.name.clone()).unwrap_or_else(|| id.to_string())
+        };
+        let mods = native_mods
+            .iter()
+            .map(|id| NativeMod {
+                id: id.clone(),
+                name: name_of(id),
+                files: plan.loader.files.iter().filter(|file| &file.mod_id == id).map(|file| file.rel.clone()).collect(),
+            })
+            .collect();
+
+        Ok(NativeRequest { mods, remembered: library.native_set_approved(&native_mods) })
+    }
+
+    pub fn remember_native_approval(&self, native_mods: BTreeSet<String>) -> Result<()> {
+        self.library()?.remember_native_set(native_mods)
+    }
+
+    pub fn ensure_native_approved(&self, plan: &BuildPlan, approved: &BTreeSet<String>) -> Result<()> {
+        let native_mods = plan.loader.native_mods();
+
+        if native_mods.is_empty() || native_mods.is_subset(approved) || self.library()?.native_set_approved(&native_mods) {
+            return Ok(());
+        }
+
+        let names: Vec<&str> = native_mods.iter().map(String::as_str).collect();
+
+        anyhow::bail!(
+            "these mods run native code that wasn't approved for this load order: {}. Nothing was changed",
+            names.join(", ")
+        )
     }
 
     pub fn install(&self, plan: &BuildPlan) -> Result<()> {
@@ -226,11 +302,12 @@ impl Session {
         Ok(removed)
     }
 
-    pub fn launch_checked(&self) -> Result<(BuildPlan, bool)> {
+    pub fn launch_checked(&self, approved: &BTreeSet<String>) -> Result<(BuildPlan, bool)> {
         let plan = self.plan()?;
         if !plan.ok() {
             anyhow::bail!("the mods have errors (see the conflicts report); the game was not started");
         }
+        self.ensure_native_approved(&plan, approved)?;
         let st = self.status();
         let in_sync = st.deploy_state == "current" || (st.deploy_state == "none" && !st.mods.iter().any(|m| m.enabled));
         if !in_sync {
@@ -242,5 +319,26 @@ impl Session {
 
     pub fn launch(&self) -> Result<()> {
         crate::util::open_external(std::ffi::OsStr::new(&format!("steam://rungameid/{}", paths::APP_ID)))
+    }
+
+
+    pub fn loader_overview(&self) -> Option<LoaderOverview> {
+        let install_dir = self.paths.install_dir.as_deref()?;
+
+        Some(loader::overview(install_dir, self.loader_source.as_deref()))
+    }
+
+    // Installs the MT2 Loader, or updates it, from the copy that comes with the manager.
+    pub fn install_loader(&self) -> Result<Vec<String>> {
+        let install_dir = self.paths.install_dir.as_deref().context("the game folder wasn't found; set it in the settings")?;
+        let files = loader::find_loader_files(self.loader_source.as_deref())?;
+
+        loader::install(install_dir, &files)
+    }
+
+    pub fn remove_loader(&self) -> Result<Vec<String>> {
+        let install_dir = self.paths.install_dir.as_deref().context("the game folder wasn't found; set it in the settings")?;
+
+        loader::remove(install_dir)
     }
 }

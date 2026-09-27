@@ -50,6 +50,8 @@
             <hr>
             <button role="menuitem" data-act="details">Build details…</button>
             <button role="menuitem" data-act="copyGameVersion">Copy game version</button>
+            <button role="menuitem" data-act="openLoaderLog" id="miLoaderLog" hidden>Open loader log</button>
+            <button role="menuitem" data-act="removeLoader" id="miRemoveLoader" hidden>Remove MT2 Loader</button>
             <button role="menuitem" data-act="settings">Settings…</button>
         </div>
     </div>
@@ -81,6 +83,7 @@
     <button class="btn sq" data-act="deleteProfile" title="Delete profile" aria-label="Delete profile">
         <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 7h10v2H3z"/></svg>
     </button>
+    <button class="btn" data-act="installLoader" id="btnLoader" hidden></button>
 
     <span class="grow"></span>
 
@@ -260,6 +263,28 @@
             <div class="btnrow end">
                 <button class="btn" value="cancel">Cancel</button>
                 <button class="btn primary" value="ok" id="askOk">OK</button>
+            </div>
+        </div>
+    </form>
+</dialog>
+
+<!-- dialog native code, asked before Apply and Launch (src/features/nativeApproval.ts)-->
+<dialog id="nativeDlg" class="gwin">
+    <form method="dialog">
+        <h2 class="wtitle">Native code</h2>
+
+        <div class="form">
+            <p>These mods run their own code inside the game. It can do anything your Windows account can: approve only mods from authors you trust.</p>
+            <ul id="nativeList" class="plain nativelist"></ul>
+
+            <label class="checkrow">
+                <input type="checkbox" class="check" id="nativeRemember">
+                <span>Don't show this again for this load order</span>
+            </label>
+
+            <div class="btnrow end">
+                <button class="btn" value="cancel">Cancel</button>
+                <button class="btn primary" value="ok" id="nativeOk">Approve</button>
             </div>
         </div>
     </form>

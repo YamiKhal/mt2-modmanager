@@ -4,6 +4,7 @@ use crate::merge::{strip_all_directives, Level, Merger, Report};
 use crate::modconfig::{self, CONFIG_FILE};
 use crate::namespace::{self, VanillaIds};
 use crate::record::{self, Document, Record};
+use crate::native::{self, LoaderPlan};
 use crate::{models, safety, textures};
 use crate::util::{i18n_language, is_record_path, rel_string};
 use crate::vanilla::Vanilla;
@@ -43,6 +44,7 @@ pub struct BuildPlan {
     pub renames: Vec<Rename>,
     pub report: Report,
     pub game_version: Option<String>,
+    pub loader: LoaderPlan,
 }
 
 struct ModFiles {
@@ -51,6 +53,7 @@ struct ModFiles {
     formats: BTreeMap<String, (bool, bool)>,
     opaque: BTreeMap<String, PathBuf>,
     filled: BTreeMap<String, Vec<u8>>,
+    native: BTreeMap<String, PathBuf>,
 }
 
 
@@ -97,6 +100,7 @@ fn load_mod(m: &LibraryMod, manifest: &Manifest, report: &mut Report) -> Result<
         formats: BTreeMap::new(),
         opaque: BTreeMap::new(),
         filled: BTreeMap::new(),
+        native: BTreeMap::new(),
     };
     if let Some(e) = &m.config_error {
         report.push(Level::Error, ns, CONFIG_FILE, "", e.clone());
@@ -106,6 +110,8 @@ fn load_mod(m: &LibraryMod, manifest: &Manifest, report: &mut Report) -> Result<
     }
     let texts: BTreeMap<String, String> =
         m.config.iter().map(|o| (o.key.clone(), o.render(m.settings.values.get(&o.key).unwrap_or(&o.default)))).collect();
+    let chosen = chosen_files(m, report);
+    let option_sources: HashSet<&String> = m.config.iter().flat_map(|o| o.options.iter().flat_map(|c| c.files.values())).collect();
     let mut used = HashSet::new();
     for e in walkdir::WalkDir::new(&m.dir).follow_links(false).into_iter().filter_map(|e| e.ok()) {
         if !e.file_type().is_file() {
@@ -116,36 +122,99 @@ fn load_mod(m: &LibraryMod, manifest: &Manifest, report: &mut Report) -> Result<
         if rel == MANIFEST_FILE || rel == ICON_FILE || rel == CONFIG_FILE || name.starts_with('.') || is_doc_file(&rel) {
             continue;
         }
-        if is_record_path(&rel) {
-            let raw = std::fs::read(e.path())?;
-            let (bytes, keys, unknown) = modconfig::fill(&raw, &texts);
-            used.extend(keys);
-            if (!m.config.is_empty() || m.config_error.is_some()) && i18n_language(&rel).is_none() {
-                for k in unknown {
-                    report.push(Level::Warning, ns, &rel, "", format!("<{k}> looks like a setting, but {CONFIG_FILE} doesn't declare '{k}'"));
-                }
-            }
-            match record::parse(&bytes) {
-                Ok(doc) => {
-                    out.formats.insert(rel.clone(), (doc.crlf, doc.latin1));
-                    out.records.insert(rel, doc.records);
-                }
-                Err(err) => {
-                    report.push(Level::Warning, ns, &rel, "", format!("could not parse ({err}); copied as-is, not merged"));
-                    if bytes != raw {
-                        out.filled.insert(rel.clone(), bytes);
-                    }
-                    out.opaque.insert(rel, e.path().to_path_buf());
-                }
-            }
-        } else {
-            out.opaque.insert(rel, e.path().to_path_buf());
+        // A choice's files go only where the picked option puts them.
+        if option_sources.contains(&rel) {
+            continue;
         }
+        if let Some(setting) = chosen.get(&rel).map(|(setting, _)| setting) {
+            report.push(Level::Info, ns, &rel, "", format!("replaced by the file the setting '{setting}' picks"));
+            continue;
+        }
+        add_file(&mut out, m, &rel, e.path(), &texts, &mut used, report)?;
     }
-    for o in m.config.iter().filter(|o| !used.contains(&o.key)) {
+    for (target, (_, source)) in &chosen {
+        add_file(&mut out, m, target, &m.dir.join(source), &texts, &mut used, report)?;
+    }
+    let plugins_read_settings = manifest.loader.as_ref().is_some_and(|loader| !loader.plugins.is_empty());
+    let picks_files = |o: &modconfig::ConfigOption| o.options.iter().any(|c| !c.files.is_empty());
+    for o in m.config.iter().filter(|o| !used.contains(&o.key) && !picks_files(o) && !plugins_read_settings) {
         report.push(Level::Warning, ns, CONFIG_FILE, "", format!("setting '{}' is not used: no text file contains <{}>", o.key, o.key));
     }
     Ok(out)
+}
+
+
+// The files the picked option of each choice puts in place: deployed path -> (setting, path in the mod).
+fn chosen_files(m: &LibraryMod, report: &mut Report) -> BTreeMap<String, (String, String)> {
+    let ns = m.manifest.as_ref().map_or("", |man| man.id.as_str());
+    let mut chosen = BTreeMap::new();
+    for o in &m.config {
+        for choice in &o.options {
+            for source in choice.files.values().filter(|source| !m.dir.join(source).is_file()) {
+                report.push(
+                    Level::Error,
+                    ns,
+                    CONFIG_FILE,
+                    "",
+                    format!("setting '{}', option '{}' uses {source}, which isn't in the mod", o.key, choice.value),
+                );
+            }
+        }
+        let picked = o.chosen_files(m.settings.values.get(&o.key).unwrap_or(&o.default));
+        for (target, source) in picked {
+            if let Some((other, _)) = chosen.get(&target) {
+                report.push(Level::Error, ns, CONFIG_FILE, "", format!("settings '{other}' and '{}' both put a file at {target}", o.key));
+                continue;
+            }
+            chosen.insert(target, (o.key.clone(), source));
+        }
+    }
+    chosen.retain(|_, (_, source)| m.dir.join(source.as_str()).is_file());
+    chosen
+}
+
+fn add_file(
+    out: &mut ModFiles,
+    m: &LibraryMod,
+    rel: &str,
+    path: &std::path::Path,
+    texts: &BTreeMap<String, String>,
+    used: &mut HashSet<String>,
+    report: &mut Report,
+) -> Result<()> {
+    let ns = out.manifest.id.clone();
+    let rel = rel.to_string();
+    // DLLs never join the merged files: they go to the mod's own folder, and only the loader loads them.
+    if native::is_native_file(&rel) {
+        out.native.insert(rel, path.to_path_buf());
+        return Ok(());
+    }
+    if !is_record_path(&rel) {
+        out.opaque.insert(rel, path.to_path_buf());
+        return Ok(());
+    }
+    let raw = std::fs::read(path)?;
+    let (bytes, keys, unknown) = modconfig::fill(&raw, texts);
+    used.extend(keys);
+    if (!m.config.is_empty() || m.config_error.is_some()) && i18n_language(&rel).is_none() {
+        for k in unknown {
+            report.push(Level::Warning, &ns, &rel, "", format!("<{k}> looks like a setting, but {CONFIG_FILE} doesn't declare '{k}'"));
+        }
+    }
+    match record::parse(&bytes) {
+        Ok(doc) => {
+            out.formats.insert(rel.clone(), (doc.crlf, doc.latin1));
+            out.records.insert(rel, doc.records);
+        }
+        Err(err) => {
+            report.push(Level::Warning, &ns, &rel, "", format!("could not parse ({err}); copied as-is, not merged"));
+            if bytes != raw {
+                out.filled.insert(rel.clone(), bytes);
+            }
+            out.opaque.insert(rel, path.to_path_buf());
+        }
+    }
+    Ok(())
 }
 
 
@@ -202,6 +271,7 @@ pub fn plan(vanilla: &Vanilla, mods: &[LibraryMod], game_version: Option<String>
     let mut loaded: Vec<ModFiles> = Vec::new();
     for (lm, man) in &enabled {
         let mut mf = load_mod(lm, man, &mut plan.report)?;
+        native::check_mod(lm, man, &mf.native, &mut plan.report, &mut plan.loader)?;
         for (rel, recs) in &mf.records {
             safety::check_mod_file(&man.id, rel, recs, vanilla, &mut plan.report)?;
         }

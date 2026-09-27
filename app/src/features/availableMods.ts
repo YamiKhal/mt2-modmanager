@@ -74,7 +74,7 @@ function createRow(mod: LibraryMod, shownMods: LibraryMod[]): HTMLLIElement {
         row.title = `${manifest.name} (${manifest.id})`;
         row.innerHTML = `
             ${iconHtml(mod)}
-            <div class="rtitle"><b><em>${escapeHtml(manifest.name)}</em>${devMarkHtml(mod)}${versionMarkHtml(manifest)}</b><span>${byLine}</span></div>
+            <div class="rtitle"><b><em>${escapeHtml(manifest.name)}</em>${nativeTagHtml(mod)}${devMarkHtml(mod)}${versionMarkHtml(manifest)}</b><span>${byLine}</span></div>
             ${devRefreshHtml(mod)}
             <span class="rver">${escapeHtml(manifest.version)}</span>`;
     } else {
@@ -101,6 +101,14 @@ function createRow(mod: LibraryMod, shownMods: LibraryMod[]): HTMLLIElement {
     });
 
     return row;
+}
+
+function nativeTagHtml(mod: LibraryMod): string {
+    if (!mod.native) {
+        return "";
+    }
+
+    return `<span class="tag" title="Runs its own code inside the game, through the MT2 Loader. Apply and Launch ask before it runs">DLL</span>`;
 }
 
 function devMarkHtml(mod: LibraryMod): string {

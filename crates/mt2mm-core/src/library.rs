@@ -2,7 +2,7 @@ use crate::manifest::{suggest_id, Manifest, ICON_FILE, MANIFEST_FILE};
 use crate::modconfig::{self, ConfigOption, Resolved, SavedAll};
 use anyhow::{bail, Context, Result};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -26,6 +26,10 @@ pub struct State {
     // Mods added with "Add dev mod": id -> the author's own folder, re-imported on refresh.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub dev_sources: BTreeMap<String, PathBuf>,
+    // Sets of native-code mods the player approved with "Don't show this again": a load order with exactly
+    // these native mods runs without asking. Adding or removing one asks again; updating one doesn't.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub approved_native_sets: Vec<BTreeSet<String>>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -41,6 +45,8 @@ pub struct LibraryMod {
     pub config_error: Option<String>,
     pub settings: Resolved,
     pub dev_source: Option<PathBuf>,
+    // Brings native code (DLLs) that the MT2 Loader runs: manifest.json lists loader plugins or libraries.
+    pub native: bool,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -65,6 +71,7 @@ impl Default for State {
             active: DEFAULT_PROFILE.into(),
             profiles: BTreeMap::from([(DEFAULT_PROFILE.into(), Profile::default())]),
             dev_sources: BTreeMap::new(),
+            approved_native_sets: Vec::new(),
         }
     }
 }
@@ -82,7 +89,7 @@ impl State {
         let disabled = strs("disabled");
         let mods = strs("order").into_iter().map(|id| ProfileEntry { enabled: !disabled.contains(&id), id }).collect();
         let p = Profile { mods, ..Default::default() };
-        Some(State { active: DEFAULT_PROFILE.into(), profiles: BTreeMap::from([(DEFAULT_PROFILE.into(), p)]), dev_sources: BTreeMap::new() })
+        Some(State { profiles: BTreeMap::from([(DEFAULT_PROFILE.into(), p)]), ..State::default() })
     }
 
     fn fix(&mut self) {
@@ -184,7 +191,9 @@ impl Library {
                     .map(|m| modconfig::resolve(&config, saved.get(&m.id), &m.version))
                     .unwrap_or_default();
                 let dev_source = manifest.as_ref().and_then(|m| st.dev_sources.get(&m.id)).cloned();
+                let native = manifest.as_ref().and_then(|m| m.loader.as_ref()).is_some_and(|needs| !needs.plugins.is_empty() || !needs.libraries.is_empty());
                 mods.push(LibraryMod {
+                    native,
                     dev_source,
                     config,
                     config_error,
@@ -526,7 +535,33 @@ impl Library {
             .context("no such mod")?;
         self.remove_dir_in_library(&m.dir)?;
         self.normalize_state()?;
+
         Ok(())
+    }
+
+    pub fn native_set_approved(&self, native_mods: &BTreeSet<String>) -> bool {
+        self.load_state().approved_native_sets.contains(native_mods)
+    }
+
+    pub fn remember_native_set(&self, native_mods: BTreeSet<String>) -> Result<()> {
+        let mut state = self.load_state();
+
+        if native_mods.is_empty() || state.approved_native_sets.contains(&native_mods) {
+            return Ok(());
+        }
+
+        state.approved_native_sets.push(native_mods);
+
+        self.save_state(&state)
+    }
+
+    pub fn forget_native_sets(&self) -> Result<usize> {
+        let mut state = self.load_state();
+        let count = state.approved_native_sets.len();
+        state.approved_native_sets.clear();
+        self.save_state(&state)?;
+
+        Ok(count)
     }
 }
 
@@ -658,6 +693,23 @@ mod tests {
         lib.remove("mine").unwrap();
         assert!(lib.load_state().dev_sources.is_empty());
         assert!(src.join(MANIFEST_FILE).is_file());
+    }
+
+    #[test]
+    fn native_approval_covers_exactly_one_set_of_mods() {
+        let root = tmp("native");
+        let lib = Library::new(&root.join("mgr"));
+        let set = |ids: &[&str]| ids.iter().map(|id| id.to_string()).collect::<BTreeSet<String>>();
+
+        lib.remember_native_set(set(&["wings", "tails"])).unwrap();
+
+        assert!(lib.native_set_approved(&set(&["tails", "wings"])));
+        assert!(!lib.native_set_approved(&set(&["wings"])));
+        assert!(!lib.native_set_approved(&set(&["wings", "tails", "horns"])));
+
+        lib.remember_native_set(set(&["wings", "tails"])).unwrap();
+        assert_eq!(lib.forget_native_sets().unwrap(), 1);
+        assert!(!lib.native_set_approved(&set(&["wings", "tails"])));
     }
 
     #[test]

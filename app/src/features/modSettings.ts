@@ -5,7 +5,7 @@ import { runAction } from "../ui/busy";
 import { toast } from "../ui/toast";
 import { query, queryAll } from "../util/dom";
 import { escapeHtml } from "../util/text";
-import { controlHtml, defaultValueText, formatNumber } from "./settingControls";
+import { controlHtml, defaultValueText, formatNumber, hexColor } from "./settingControls";
 
 const RESET_ICON = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3a5 5 0 1 1-4.9 6h1.6A3.5 3.5 0 1 0 8 4.5V7L4.5 3.75 8 .5z"/></svg>`;
 
@@ -154,11 +154,21 @@ function wireControl(
         });
     }
 
+    if (control instanceof HTMLInputElement && control.type === "color") {
+        const hexField = control.parentElement?.querySelector<HTMLInputElement>("input.hex");
+
+        control.addEventListener("input", () => {
+            if (hexField) {
+                hexField.value = control.value.toUpperCase();
+            }
+        });
+    }
+
     control.addEventListener("change", () => {
         const value = readControl(control, option);
 
         if (value === null) {
-            toast(`${option.label}: enter a number`, true);
+            toast(`${option.label}: ${option.type === "color" ? "enter a color like #FDFE0C" : "enter a number"}`, true);
             void refresh();
 
             return;
@@ -171,6 +181,10 @@ function wireControl(
 function readControl(control: HTMLInputElement | HTMLSelectElement, option: ConfigOption): SettingValue | null {
     if (option.type === "bool") {
         return (control as HTMLInputElement).checked;
+    }
+
+    if (option.type === "color") {
+        return hexColor(control.value);
     }
 
     if (option.type === "int" || option.type === "float") {
@@ -219,6 +233,10 @@ function focusedControlSelector(): string | null {
         kind = '[type="range"]';
     } else if (focused.classList.contains("num")) {
         kind = ".num";
+    } else if (focused.classList.contains("hex")) {
+        kind = ".hex";
+    } else if (focused.classList.contains("swatch")) {
+        kind = ".swatch";
     }
 
     return `#tab-desc [data-key="${key}"]${kind}`;

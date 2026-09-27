@@ -1,13 +1,15 @@
 use anyhow::{bail, Context, Result};
 use mt2mm_core::build::BuildPlan;
+use mt2mm_core::loader::{self, LoaderState};
 use mt2mm_core::merge::Level;
 use mt2mm_core::session::{Config, Session};
+use std::collections::BTreeSet;
 use std::path::PathBuf;
 
 const HELP: &str = "\
 mt2mm - MMORPG Tycoon 2 mod manager
 
-USAGE: mt2mm [--profile DIR] [--data ZIP|DIR] [--install DIR] [--json] <command> [args]
+USAGE: mt2mm [--profile DIR] [--data ZIP|DIR] [--install DIR] [--loader DIR] [--json] [--allow-native] <command> [args]
 
 MODS
   status                   detected folders, mod profiles, library and load order
@@ -46,7 +48,19 @@ BUILD
   clean                    remove everything deploy installed
   config                   save --profile/--data/--install as defaults
 
---json prints machine-readable output for status and check.
+MT2 LOADER (runs mods' native plugins; the manager can install it, but the loader works without the manager)
+  trust                    approve the native code (DLLs) of the active profile's mods, for this set of mods:
+                           deploy and launch then run them without --allow-native until a native mod is added or removed
+  untrust                  forget every approval
+  --allow-native           approve the profile's native code for this one deploy or launch
+  loader                   show whether the loader is installed and working
+  loader install           install or update it (changes zlib1.dll in the game folder)
+  loader remove            put the game's own zlib1.dll back and delete the loader's files
+  loader log               print the log of the last launch
+  --loader DIR             where the loader's files are (zlib1.dll and the mt2loader folder);
+                           default: the loader folder next to mt2mm. `config` saves it
+
+--json prints machine-readable output for status, check and loader.
 Mods in the game's mod folder that were not deployed by the manager are left alone.
 Save files are never read or written.
 ";
@@ -88,6 +102,107 @@ fn print_report(plan: &BuildPlan) {
 }
 
 
+fn print_loader_status(install_dir: &std::path::Path, json: bool) -> Result<()> {
+    let status = loader::status(install_dir);
+
+    if json {
+        println!("{}", serde_json::to_string_pretty(&status)?);
+
+        return Ok(());
+    }
+
+    let state = match status.state {
+        LoaderState::NotInstalled => "not installed",
+        LoaderState::Enabled => "enabled",
+        LoaderState::Disabled => "disabled (installed; the game runs without it)",
+        LoaderState::UndoneBySteam => "not running (Steam put the game's zlib1.dll back)",
+        LoaderState::Broken => "needs attention",
+    };
+
+    println!("Loader:  {state}");
+
+    if let Some(version) = &status.version {
+        println!("Version: {version}");
+    }
+
+    for problem in &status.problems {
+        println!("  ! {problem}");
+    }
+
+    if let Some(log) = &status.log {
+        println!("Log:     {}", log.display());
+    }
+
+    Ok(())
+}
+
+fn run_loader_command(command: Option<&str>, install_dir: &std::path::Path, source: Option<&std::path::Path>, json: bool) -> Result<()> {
+    match command {
+        None | Some("status") => print_loader_status(install_dir, json)?,
+        Some("install") => {
+            let files = loader::find_loader_files(source)?;
+
+            for action in loader::install(install_dir, &files)? {
+                println!("  {action}");
+            }
+
+            println!("Done. `mt2mm loader remove` undoes it.");
+        }
+        Some("remove") => {
+            for action in loader::remove(install_dir)? {
+                println!("  {action}");
+            }
+
+            println!("Done. The game folder is back to how Steam installed it.");
+        }
+        Some("log") => {
+            let status = loader::status(install_dir);
+            let log = status.log.context("there's no loader log yet: launch the game once with the loader enabled")?;
+            print!("{}", std::fs::read_to_string(&log)?);
+        }
+        Some(other) => bail!("unknown loader command '{other}' (try `mt2mm help`)"),
+    }
+
+    Ok(())
+}
+
+
+fn run_trust_command(session: &Session, trust: bool) -> Result<()> {
+    if !trust {
+        let count = session.library()?.forget_native_sets()?;
+        println!("Forgot {count} approval(s). Deploy and launch ask again (or need --allow-native).");
+
+        return Ok(());
+    }
+
+    let request = session.native_request()?;
+
+    if request.mods.is_empty() {
+        bail!("no enabled mod in this profile brings native code");
+    }
+
+    println!("These mods run native code inside the game. It can do anything your Windows account can:");
+
+    for native_mod in &request.mods {
+        println!("  {} ({}): {}", native_mod.name, native_mod.id, native_mod.files.join(", "));
+    }
+
+    session.remember_native_approval(request.mods.iter().map(|native_mod| native_mod.id.clone()).collect())?;
+    println!("Approved for this set of mods. Adding or removing a native mod asks again; updates don't.");
+
+    Ok(())
+}
+
+
+fn with_native_hint(error: anyhow::Error) -> anyhow::Error {
+    if !error.to_string().contains("wasn't approved") {
+        return error;
+    }
+
+    error.context("run `mt2mm trust` to approve it for this set of mods, or add --allow-native to approve it once")
+}
+
+
 fn main() -> Result<()> {
     let mut args: Vec<String> = std::env::args().skip(1).collect();
     let mut ov = Config::default();
@@ -105,6 +220,7 @@ fn main() -> Result<()> {
     ov.profile_dir = take("--profile", &mut args)?;
     ov.data = take("--data", &mut args)?;
     ov.install_dir = take("--install", &mut args)?;
+    ov.loader = take("--loader", &mut args)?;
     let json = if let Some(i) = args.iter().position(|a| a == "--json") {
         args.remove(i);
         true
@@ -117,6 +233,13 @@ fn main() -> Result<()> {
     } else {
         false
     };
+    let allow_native = if let Some(i) = args.iter().position(|a| a == "--allow-native") {
+        args.remove(i);
+        true
+    } else {
+        false
+    };
+    let allowed_native = |plan: &BuildPlan| if allow_native { plan.loader.native_mods() } else { BTreeSet::new() };
 
     let Some(cmd) = args.first().cloned() else {
         print!("{HELP}");
@@ -300,7 +423,7 @@ fn main() -> Result<()> {
                     for o in &m.config {
                         let v = &m.settings.values[&o.key];
                         let mark = if m.settings.changed.contains(&o.key) { "*" } else { " " };
-                        println!("{mark} {:<24} {:<10} {}  (default {}){}", o.key, o.render(v), o.label, o.render(&o.default),
+                        println!("{mark} {:<24} {:<10} {}  (default {}){}", o.key, o.typed(v), o.label, o.typed(&o.default),
                             if o.unit.is_empty() { String::new() } else { format!(" [{}]", o.unit) });
                         if !o.options.is_empty() {
                             println!("    options: {}", o.options.iter().map(|c| c.value.as_str()).collect::<Vec<_>>().join(", "));
@@ -316,7 +439,7 @@ fn main() -> Result<()> {
                     lib.set_settings(id, &[(k.clone(), val)].into_iter().collect(), &[])?;
                     let m = find()?;
                     let o = m.config.iter().find(|o| &o.key == k).unwrap();
-                    println!("{k} = {}. Run `mt2mm deploy` to apply.", o.render(&m.settings.values[k]));
+                    println!("{k} = {}. Run `mt2mm deploy` to apply.", o.typed(&m.settings.values[k]));
                 }
                 Some("reset") => {
                     let keys: Vec<String> =
@@ -347,11 +470,12 @@ fn main() -> Result<()> {
             if !plan.ok() {
                 bail!("not deployed because of errors");
             }
+            s.ensure_native_approved(&plan, &allowed_native(&plan)).map_err(with_native_hint)?;
             s.install(&plan)?;
             println!("\nDeployed to {}", s.paths.mod_dir().unwrap().display());
         }
         "launch" => {
-            let (plan, applied) = s.launch_checked()?;
+            let (plan, applied) = s.launch_checked(&allowed_native(&s.plan()?)).map_err(with_native_hint)?;
             if applied {
                 print_report(&plan);
                 println!("\nDeployed to {}", s.paths.mod_dir().unwrap().display());
@@ -375,8 +499,18 @@ fn main() -> Result<()> {
             if ov.install_dir.is_some() {
                 c.install_dir = ov.install_dir;
             }
+            if ov.loader.is_some() {
+                c.loader = ov.loader;
+            }
             c.save()?;
             println!("Saved to {}", Config::path().unwrap().display());
+        }
+        "trust" | "untrust" => {
+            run_trust_command(&s, cmd == "trust")?;
+        }
+        "loader" => {
+            let install_dir = s.paths.install_dir.clone().context("the game folder wasn't found (pass --install DIR)")?;
+            run_loader_command(rest.first().map(String::as_str), &install_dir, s.loader_source.as_deref(), json)?;
         }
         other => bail!("unknown command '{other}' (try `mt2mm help`)"),
     }

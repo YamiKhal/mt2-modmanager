@@ -71,6 +71,22 @@
     width: 120px;
 }
 
+.setctl input.swatch {
+    width: 32px;
+    height: 22px;
+    flex: none;
+    padding: 0;
+    border: 1px solid var(--panel-glow);
+    background: none;
+    cursor: pointer;
+}
+
+.setctl input.hex {
+    width: 80px;
+    flex: none;
+    text-transform: uppercase;
+}
+
 .setctl .unit {
     min-width: 3.2em;
     color: var(--muted);

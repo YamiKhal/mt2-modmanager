@@ -12,6 +12,7 @@ pub enum Kind {
     Bool,
     String,
     Choice,
+    Color,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
@@ -25,7 +26,13 @@ pub enum Input {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum RawChoice {
-    Full { value: Value, #[serde(default)] label: String },
+    Full {
+        value: Value,
+        #[serde(default)]
+        label: String,
+        #[serde(default)]
+        files: BTreeMap<String, String>,
+    },
     Plain(Value),
 }
 
@@ -33,6 +40,9 @@ pub enum RawChoice {
 pub struct Choice {
     pub value: String,
     pub label: String,
+    // Where each of the mod's files goes when this option is picked: deployed path -> path in the mod.
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub files: BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -121,6 +131,14 @@ pub fn valid_key(k: &str) -> bool {
         && k.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.'))
 }
 
+fn valid_mod_path(path: &str) -> bool {
+    !path.is_empty()
+        && !path.starts_with('/')
+        && !path.contains('\\')
+        && !path.contains(':')
+        && path.split('/').all(|part| !part.is_empty() && part != "." && part != "..")
+}
+
 fn value_text(v: &Value) -> String {
     match v {
         Value::String(s) => s.clone(),
@@ -160,12 +178,21 @@ pub fn parse(text: &str) -> Result<Vec<ConfigOption>> {
             .options
             .iter()
             .map(|c| match c {
-                RawChoice::Plain(v) => Choice { value: value_text(v), label: value_text(v) },
-                RawChoice::Full { value, label } => {
-                    Choice { value: value_text(value), label: if label.is_empty() { value_text(value) } else { label.clone() } }
-                }
+                RawChoice::Plain(v) => Choice { value: value_text(v), label: value_text(v), files: BTreeMap::new() },
+                RawChoice::Full { value, label, files } => Choice {
+                    value: value_text(value),
+                    label: if label.is_empty() { value_text(value) } else { label.clone() },
+                    files: files.clone(),
+                },
             })
             .collect();
+        for choice in &options {
+            for (target, source) in &choice.files {
+                if !valid_mod_path(target) || !valid_mod_path(source) {
+                    bail!("key '{k}', option '{}': files are paths inside the mod, like \"QuestGiver.vmb\": \"markers/star.vmb\"", choice.value);
+                }
+            }
+        }
         match r.kind {
             Kind::Choice if options.is_empty() => bail!("key '{k}': a choice needs 'options'"),
             Kind::Choice => {}
@@ -193,6 +220,7 @@ pub fn parse(text: &str) -> Result<Vec<ConfigOption>> {
             None => o.fallback_default(),
             Some(v) => match o.check(v) {
                 Checked::Ok(v) => v,
+                Checked::Adjusted(v) if o.kind == Kind::Color => v,
                 _ => bail!("key '{k}': default {v} is not a valid {}", o.kind_name()),
             },
         };
@@ -210,6 +238,7 @@ impl ConfigOption {
             Kind::Bool => "true/false",
             Kind::String => "text",
             Kind::Choice => "choice",
+            Kind::Color => "color (#RRGGBB)",
         }
     }
 
@@ -220,6 +249,7 @@ impl ConfigOption {
             Kind::Bool => Value::Bool(false),
             Kind::String => Value::String(String::new()),
             Kind::Choice => Value::String(self.options[0].value.clone()),
+            Kind::Color => Value::String("#FFFFFF".into()),
         }
     }
 
@@ -263,11 +293,34 @@ impl ConfigOption {
                 let t = value_text(v);
                 if self.options.iter().any(|c| c.value == t) { Checked::Ok(Value::String(t)) } else { Checked::Invalid }
             }
+            Kind::Color => match v {
+                Value::String(s) => match hex_color(s) {
+                    Some(hex) if &hex == s => Checked::Ok(Value::String(hex)),
+                    Some(hex) => Checked::Adjusted(Value::String(hex)),
+                    None => Checked::Invalid,
+                },
+                _ => Checked::Invalid,
+            },
+        }
+    }
+
+    // The files the picked option of a choice puts in place (deployed path -> path in the mod).
+    pub fn chosen_files(&self, v: &Value) -> BTreeMap<String, String> {
+        let picked = value_text(v);
+
+        self.options.iter().find(|c| c.value == picked).map(|c| c.files.clone()).unwrap_or_default()
+    }
+
+    // The value as a player types it: a color as #RRGGBB, everything else as in text files.
+    pub fn typed(&self, v: &Value) -> String {
+        match self.kind {
+            Kind::Color => value_text(v),
+            _ => self.render(v),
         }
     }
 
     pub fn shown(&self, v: &Value) -> String {
-        let t = self.render(v);
+        let t = self.typed(v);
         self.options.iter().find(|c| c.value == t).map_or(t, |c| c.label.clone())
     }
 
@@ -275,9 +328,34 @@ impl ConfigOption {
         match (self.kind, v) {
             (Kind::Int, Value::Number(n)) => n.as_f64().map_or_else(|| n.to_string(), |x| (x as i64).to_string()),
             (Kind::Float, Value::Number(n)) => fmt_float(n.as_f64().unwrap_or(0.0)),
+            (Kind::Color, Value::String(s)) => game_color(s),
             _ => value_text(v),
         }
     }
+}
+
+// "#fe0" or "FDFE0C" as "#FDFE0C"; None for anything that isn't a color.
+fn hex_color(text: &str) -> Option<String> {
+    let digits = text.trim().trim_start_matches('#');
+
+    if !digits.chars().all(|c| c.is_ascii_hexdigit()) {
+        return None;
+    }
+
+    let full: String = match digits.len() {
+        3 => digits.chars().flat_map(|c| [c, c]).collect(),
+        6 => digits.to_string(),
+        _ => return None,
+    };
+
+    Some(format!("#{}", full.to_ascii_uppercase()))
+}
+
+// A color the way the game's text files write one: red, green, blue and alpha from 0 to 1.
+fn game_color(hex: &str) -> String {
+    let channel = |at: usize| u8::from_str_radix(hex.get(at..at + 2).unwrap_or("FF"), 16).unwrap_or(255) as f64 / 255.0;
+
+    format!("{:.3} {:.3} {:.3} 1", channel(1), channel(3), channel(5))
 }
 
 fn clean_text(s: &str) -> String {
@@ -304,7 +382,7 @@ pub fn resolve(options: &[ConfigOption], saved: Option<&Saved>, version: &str) -
             match o.check(sv) {
                 Checked::Ok(x) => v = x,
                 Checked::Adjusted(x) => {
-                    r.notes.push(format!("{}: {} changed to {} to fit this version", o.label, value_text(sv), o.render(&x)));
+                    r.notes.push(format!("{}: {} changed to {} to fit this version", o.label, value_text(sv), o.typed(&x)));
                     v = x;
                 }
                 Checked::Invalid => r.notes.push(format!(
@@ -458,6 +536,36 @@ mod tests {
         assert_eq!(String::from_utf8(out).unwrap(), "cost 40000;\nmul 1.5; a true \"Mega\" <<price>> <other> b\n# <note> x_<id>");
         assert_eq!(used.len(), 5);
         assert_eq!(unknown.into_iter().collect::<Vec<_>>(), vec!["other"]);
+    }
+
+    #[test]
+    fn colors_read_as_hex_and_fill_as_game_colors() {
+        let o = parse(r##"[{"key":"tint","type":"color","default":"#fe0"}]"##).unwrap();
+        assert_eq!(o[0].default, json!("#FFEE00"));
+        assert_eq!(o[0].render(&o[0].default), "1.000 0.933 0.000 1");
+        assert_eq!(o[0].typed(&o[0].default), "#FFEE00");
+        assert!(parse(r#"[{"key":"x","type":"color","default":"red"}]"#).is_err());
+        assert_eq!(parse(r#"[{"key":"x","type":"color"}]"#).unwrap()[0].default, json!("#FFFFFF"));
+
+        let r = resolve(&o, Some(&Saved { version: "1".into(), values: BTreeMap::from([("tint".to_string(), json!("00ff80"))]) }), "1");
+        assert_eq!(r.values["tint"], json!("#00FF80"));
+        assert_eq!(r.notes, vec!["tint: 00ff80 changed to #00FF80 to fit this version"]);
+        assert!(to_saved(&o, &BTreeMap::from([("tint".to_string(), json!("#12345"))]), "1").is_err());
+    }
+
+    #[test]
+    fn choices_pick_files() {
+        let o = parse(
+            r#"[{"key":"shape","type":"choice","default":"star","options":[
+                {"value":"star","files":{"QuestGiver.vmb":"markers/star.vmb"}},
+                {"value":"plain"}
+            ]}]"#,
+        )
+        .unwrap();
+        assert_eq!(o[0].chosen_files(&json!("star")), BTreeMap::from([("QuestGiver.vmb".to_string(), "markers/star.vmb".to_string())]));
+        assert!(o[0].chosen_files(&json!("plain")).is_empty());
+        assert!(parse(r#"[{"key":"x","type":"choice","options":[{"value":"a","files":{"../x.vmb":"a.vmb"}}]}]"#).is_err());
+        assert!(parse(r#"[{"key":"x","type":"choice","options":[{"value":"a","files":{"x.vmb":"C:/a.vmb"}}]}]"#).is_err());
     }
 
     #[test]
