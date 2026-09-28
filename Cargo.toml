@@ -3,7 +3,7 @@ resolver = "2"
 members = ["crates/mt2mm-core", "crates/mt2mm-cli", "app/src-tauri"]
 
 [workspace.package]
-version = "0.5.9"
+version = "0.5.13"
 edition = "2021"
 license = "MIT"
 
