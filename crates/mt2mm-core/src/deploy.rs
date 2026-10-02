@@ -116,38 +116,6 @@ fn write_files(files: &[OutFile], root: &Path) -> Result<()> {
     }
 }
 
-// Each mod's DLLs go to its own folder (mm_<id>), so two mods' plugins can't overwrite each other.
-// Its manifest.json goes with them: the loader reads it there to find the plugins.
-fn write_native_files(plan: &BuildPlan, root: &Path) -> Result<()> {
-    for (mod_id, manifest) in &plan.loader.manifests {
-        let mod_folder = root.join(format!("{PLACEHOLDER_PREFIX}{mod_id}"));
-        std::fs::create_dir_all(&mod_folder)?;
-
-        let target = mod_folder.join(crate::manifest::MANIFEST_FILE);
-        std::fs::write(&target, std::fs::read(manifest)?).with_context(|| format!("writing {}", target.display()))?;
-    }
-
-    for (mod_id, settings) in &plan.loader.settings {
-        let mod_folder = root.join(format!("{PLACEHOLDER_PREFIX}{mod_id}"));
-        std::fs::create_dir_all(&mod_folder)?;
-        std::fs::write(mod_folder.join(crate::modconfig::CONFIG_FILE), std::fs::read(&settings.config)?)?;
-        std::fs::write(mod_folder.join(crate::native::PLUGIN_SETTINGS_FILE), &settings.values)?;
-    }
-
-    for file in &plan.loader.files {
-        let mod_folder = root.join(format!("{PLACEHOLDER_PREFIX}{}", file.mod_id));
-        let target = safe_join(&mod_folder, &file.rel)?;
-
-        if let Some(folder) = target.parent() {
-            std::fs::create_dir_all(folder)?;
-        }
-
-        std::fs::write(&target, std::fs::read(&file.source)?).with_context(|| format!("writing {}", target.display()))?;
-    }
-
-    Ok(())
-}
-
 pub fn deploy(plan: &BuildPlan, mod_dir: &Path, manager_dir: &Path, fingerprint: String) -> Result<()> {
     if !plan.ok() {
         bail!("the build has errors; nothing was deployed");
@@ -167,7 +135,6 @@ pub fn deploy(plan: &BuildPlan, mod_dir: &Path, manager_dir: &Path, fingerprint:
         std::fs::create_dir_all(&d)?;
         std::fs::write(d.join(MARKER), marker_json(Some(ns)))?;
     }
-    write_native_files(plan, &staging)?;
 
     // Refuse before changing anything if a folder we are about to create exists but is not ours.
     let managed = managed_folders(mod_dir);
@@ -194,7 +161,6 @@ pub fn deploy(plan: &BuildPlan, mod_dir: &Path, manager_dir: &Path, fingerprint:
 
 pub fn export(plan: &BuildPlan, dest: &Path) -> Result<()> {
     write_files(&plan.files, dest)?;
-    write_native_files(plan, dest)?;
     std::fs::write(dest.join("mt2mm_report.json"), serde_json::to_string_pretty(plan)? + "\n")?;
     Ok(())
 }

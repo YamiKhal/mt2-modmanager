@@ -19,11 +19,10 @@ my_mod/
   techs/my_techs.vrt         <- new techs (any file name)
   i18n/english/my_mod.vrt    <- your strings (any file name)
   costumes/…, weapons/…      <- images, models and other files: copied as-is
-  native/my_plugin.dll       <- optional native plugin (see Native plugins)
 ```
 
 - **icon.png:** Square works best, 128×128 is a good size. Only shown in the manager, never copied into the game.
-- **Not copied into the game:** `icon.png`, `config.json`, and any `README`, `LICENSE`, `CHANGELOG` or `CREDITS` file at the top level.
+- **Not copied into the game:** `icon.png`, `config.json`, and any `README`, `LICENSE`, `CHANGELOG` or `CREDITS` file at the top level. DLLs are skipped with a warning: mods can't run native code.
 
 ## manifest.json
 
@@ -44,11 +43,7 @@ my_mod/
   "dependencies": ["toolbox"],
   "incompatible": [],
   "replace": [],
-  "game_versions": ["0.30"],
-  "loader": {
-    "plugins": ["native/my_plugin.dll"],
-    "game_builds": ["0.30.7"]
-  }
+  "game_versions": ["0.30"]
 }
 ```
 
@@ -66,7 +61,6 @@ Only `id` and `name` are required. The rest is up to you.
 - **dependencies:** Ids of mods that must be enabled and load **before** yours. If they aren't, the build stops.
 - **incompatible:** Ids of mods that can't be enabled at the same time as yours.
 - **replace:** Text files to replace entirely instead of merging, e.g. `["tweak/tweak.vrt"]`. You'll rarely need this.
-- **loader:** Only for mods with native plugins. See [Native plugins](#native-plugins-mt2-loader).
 - **game_versions:** Game versions you tested with. `"0.30"` matches `0.30.7-gdae20ea`. A mismatch is only a warning, not an error.
 
 Link fields (`mod_page`, `support`, `donate`, `source`) open in the player's browser if they start with `https://`, `http://` or `mailto:`. Anything else is shown as text.
@@ -138,8 +132,6 @@ The settings show up on the mod's **Details** tab. When the mod is applied, the 
 - `color` is written the way the game's text files write colors: red, green, blue and alpha from 0 to 1 (`#FF8000` becomes `1.000 0.502 0.000 1`). So `color <marker_color>` in a material, or `Color <tint>;` in a data file, takes the player's color.
 
 Placeholders are filled in all merged text files (see [How text files are merged](#how-text-files-are-merged)), translations included. Ids that end up in a placeholder's value get prefixed like any other id. Images, models, shaders and other copied files are left alone.
-
-**Mods with a native plugin** can read their settings in code too (`plugin::setting<int>("key")`, [LOADER_MODDING.md](../../LOADER_MODDING.md#settings-the-player-picks-configjson)): the manager puts `config.json` and the player's values (`settings.json`) next to the plugin when it deploys. A setting only the plugin reads needs no `<key>` in any text file.
 
 ### Choices that pick files
 
@@ -328,54 +320,6 @@ Every `.vmb` a mod ships is read before deploying. [MT2 Tools for Blender](../..
 | A `materials/*.mat` whose `texture` file isn't in the game or any enabled mod | error | The game most likely closes: it asserts when it can't open a file |
 
 Saves find scenery and weapons by file name. Don't rename a model after you release it: placed copies turn into placeholders.
-
-## Native plugins (MT2 Loader)
-
-Most mods never need this. A native plugin is a DLL that runs inside the game, for changes no data file can make. The **MT2 Loader** starts it. How to write one, from setting up a compiler to finding the game functions to change: **[LOADER_MODDING.md](../../LOADER_MODDING.md)**. This section covers what the manager does with plugin mods.
-
-- **A plugin mod is a normal mod:** a folder with a `manifest.json`, in the game's mod folder. Put there by the manager or by hand.
-- **The loader works without the manager.** Players can install it from its release zip by hand; it finds plugin mods in the game's mod folder by itself.
-- **With the manager it's easier.** An **Install loader** button next to the profile's buttons installs it, and **Update loader** updates it. Mods with native code show a **DLL** tag in Available Mods.
-- **Apply and Launch ask first.** When the load order has mods with native code, a dialog lists them and their DLLs, and the player approves or cancels. With **Don't show this again for this load order** ticked, the manager doesn't ask again until a mod with native code is added to or removed from the load order. Updating a mod doesn't ask again. (`mt2mm trust` does the same on the command line, and `--allow-native` approves one deploy or launch.)
-- The manager deploys the DLLs with your `manifest.json` into your mod's own folder, `mod/mm_<id>/`, never into the merged files.
-- The loader only starts plugins on the game builds you list, and never when the game runs with `--no-mods`.
-
-### manifest.json
-
-```json
-"loader": {
-  "plugins": ["native/my_plugin.dll"],
-  "libraries": ["native/helper.dll"],
-  "game_builds": ["0.30.7"]
-}
-```
-
-- **plugins:** The DLLs the loader starts, in your mod's folder: plugins built with the loader's SDK (each exports `plugin_init`).
-- **libraries:** Other DLLs your plugins load themselves. Put them next to the plugin: Windows finds them there.
-- **game_builds:** The game builds you tested on. On any other build the loader skips your plugin and says why in its log; the rest of your mod still works. After a game update, test and add the new build.
-
-### Checks
-
-The manager checks this before deploying (errors stop Apply and Launch). The loader checks what it needs again at startup, for mods put in the mod folder by hand, and writes any problem to its log. `mt2sdk check <mod folder>` runs the loader's checks without the game.
-
-| Found in your mod | Level |
-|---|---|
-| A `.dll` not listed in `plugins` or `libraries` | error |
-| A listed file that isn't in the mod | error |
-| A DLL that isn't a 64-bit Windows DLL | error |
-| A plugin without `plugin_init` | error |
-| Plugins without `game_builds` | error |
-| The load order needs the loader, and it isn't installed | warning, with an **Install loader** button |
-
-### Testing it with the manager
-
-1. **Tools -> Add dev mod…** and pick your plugin project's `mod` folder, then add it to the profile.
-2. **Install loader** if the button shows, then **Launch**, and approve the native code.
-3. After quitting, **Tools -> Open loader log** shows `[<id>] starting …` and your own lines.
-
-Or without the manager: your plugin project copies `mod` into the game's mod folder after every build (LOADER_MODDING.md). Don't do both for the same mod: the loader starts a mod id once, from the first folder it finds.
-
-If the game crashes twice in a row with plugins running, the next launch runs without them (the log says so), and the one after tries again. Holding **Shift** while the game starts also skips them.
 
 ## Testing your mod
 

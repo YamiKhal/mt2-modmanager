@@ -91,14 +91,3 @@ ul.plain li {
     font-weight: 400;
     cursor: pointer;
 }
-
-ul.nativelist li {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 2px;
-}
-
-ul.nativelist .files {
-    color: var(--muted);
-    font-size: .9em;
-}

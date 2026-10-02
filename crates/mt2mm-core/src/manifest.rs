@@ -35,22 +35,6 @@ pub struct Manifest {
     pub replace: Vec<String>,
     #[serde(default)]
     pub game_versions: Vec<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub loader: Option<LoaderNeeds>,
-}
-
-// What a mod needs from the MT2 Loader. Any of it makes the manager install and enable the loader.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
-#[serde(deny_unknown_fields)]
-pub struct LoaderNeeds {
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub plugins: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub libraries: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub features: Vec<String>,
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub game_builds: Vec<String>,
 }
 
 pub const MANIFEST_FILE: &str = "manifest.json";

@@ -5,7 +5,6 @@ import type {
     GamePaths,
     Imported,
     LaunchResult,
-    NativeRequest,
     SettingValue,
     Status,
 } from "./types";
@@ -95,12 +94,12 @@ export function checkBuild(): Promise<BuildPlan> {
     return invoke<BuildPlan>("check");
 }
 
-export function deployToGame(approvedNative: string[]): Promise<BuildPlan> {
-    return invoke<BuildPlan>("deploy", { approvedNative });
+export function deployToGame(): Promise<BuildPlan> {
+    return invoke<BuildPlan>("deploy");
 }
 
-export function launchGame(approvedNative: string[]): Promise<LaunchResult> {
-    return invoke<LaunchResult>("launch", { approvedNative });
+export function launchGame(): Promise<LaunchResult> {
+    return invoke<LaunchResult>("launch");
 }
 
 export function cleanGameModFolder(): Promise<number> {
@@ -132,23 +131,3 @@ export function openUrl(url: string): Promise<void> {
     return invoke("open_url", { url });
 }
 
-
-export function installLoader(): Promise<string[]> {
-    return invoke<string[]>("install_loader");
-}
-
-export function removeLoader(): Promise<string[]> {
-    return invoke<string[]>("remove_loader");
-}
-
-export function openLoaderLog(): Promise<void> {
-    return invoke("open_loader_log");
-}
-
-export function getNativeRequest(): Promise<NativeRequest> {
-    return invoke<NativeRequest>("native_request");
-}
-
-export function rememberNativeApproval(ids: string[]): Promise<void> {
-    return invoke("remember_native_approval", { ids });
-}

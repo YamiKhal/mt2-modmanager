@@ -7,21 +7,14 @@ import { runAction } from "../ui/busy";
 import { log } from "../ui/log";
 import { toast } from "../ui/toast";
 import { updateGameButtons } from "./gameButtons";
-import { approveNativeCode } from "./nativeApproval";
 
 
 export async function launch(): Promise<void> {
-    const approvedNative = await approveNativeCode();
-
-    if (approvedNative === null) {
-        return;
-    }
-
     await whileApplying(() =>
         runAction(
             "Launch",
             async () => {
-                const result = await commands.launchGame(approvedNative);
+                const result = await commands.launchGame();
 
                 if (result.applied) {
                     logApplied(result.plan);
@@ -37,17 +30,11 @@ export async function launch(): Promise<void> {
 }
 
 export async function applyToGame(): Promise<void> {
-    const approvedNative = await approveNativeCode();
-
-    if (approvedNative === null) {
-        return;
-    }
-
     await whileApplying(() =>
         runAction(
             "Apply",
             async () => {
-                const plan = await commands.deployToGame(approvedNative);
+                const plan = await commands.deployToGame();
 
                 logApplied(plan);
                 toast("Mods applied to the game. Restart the game if it's running.");

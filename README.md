@@ -35,8 +35,6 @@ Merging is required because the if mods were to edit original game files (vanill
 6. **Issues** lists errors, conflicts and warnings in your applied mods.
 7. **Launch** will launch the game with the applied mods and their configurations.
 
-Mods with native plugins need the **MT2 Loader**. When the manager doesn't find it in the game folder, an **Install loader** button shows next to the profile buttons (and **Update loader** when there's a newer one). **Tools -> Remove MT2 Loader** takes it out again. The loader also works without the manager: see [mt2-loader](../mt2-loader/README.md).
-
 Making a mod? **Tools -> Add dev mod…** keeps it in your own folder: a refresh button next to it copies your latest changes in. See [docs/MODDING.md](docs/MODDING.md#testing-your-mod).
 
 ## Configs

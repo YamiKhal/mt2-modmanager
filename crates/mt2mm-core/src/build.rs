@@ -4,7 +4,6 @@ use crate::merge::{strip_all_directives, Level, Merger, Report};
 use crate::modconfig::{self, CONFIG_FILE};
 use crate::namespace::{self, VanillaIds};
 use crate::record::{self, Document, Record};
-use crate::native::{self, LoaderPlan};
 use crate::{models, safety, textures};
 use crate::util::{i18n_language, is_record_path, rel_string};
 use crate::vanilla::Vanilla;
@@ -44,7 +43,6 @@ pub struct BuildPlan {
     pub renames: Vec<Rename>,
     pub report: Report,
     pub game_version: Option<String>,
-    pub loader: LoaderPlan,
 }
 
 struct ModFiles {
@@ -53,7 +51,6 @@ struct ModFiles {
     formats: BTreeMap<String, (bool, bool)>,
     opaque: BTreeMap<String, PathBuf>,
     filled: BTreeMap<String, Vec<u8>>,
-    native: BTreeMap<String, PathBuf>,
 }
 
 
@@ -100,7 +97,6 @@ fn load_mod(m: &LibraryMod, manifest: &Manifest, report: &mut Report) -> Result<
         formats: BTreeMap::new(),
         opaque: BTreeMap::new(),
         filled: BTreeMap::new(),
-        native: BTreeMap::new(),
     };
     if let Some(e) = &m.config_error {
         report.push(Level::Error, ns, CONFIG_FILE, "", e.clone());
@@ -135,9 +131,8 @@ fn load_mod(m: &LibraryMod, manifest: &Manifest, report: &mut Report) -> Result<
     for (target, (_, source)) in &chosen {
         add_file(&mut out, m, target, &m.dir.join(source), &texts, &mut used, report)?;
     }
-    let plugins_read_settings = manifest.loader.as_ref().is_some_and(|loader| !loader.plugins.is_empty());
     let picks_files = |o: &modconfig::ConfigOption| o.options.iter().any(|c| !c.files.is_empty());
-    for o in m.config.iter().filter(|o| !used.contains(&o.key) && !picks_files(o) && !plugins_read_settings) {
+    for o in m.config.iter().filter(|o| !used.contains(&o.key) && !picks_files(o)) {
         report.push(Level::Warning, ns, CONFIG_FILE, "", format!("setting '{}' is not used: no text file contains <{}>", o.key, o.key));
     }
     Ok(out)
@@ -184,9 +179,8 @@ fn add_file(
 ) -> Result<()> {
     let ns = out.manifest.id.clone();
     let rel = rel.to_string();
-    // DLLs never join the merged files: they go to the mod's own folder, and only the loader loads them.
-    if native::is_native_file(&rel) {
-        out.native.insert(rel, path.to_path_buf());
+    if rel.to_ascii_lowercase().ends_with(".dll") {
+        report.push(Level::Warning, &ns, &rel, "", "skipped: mods can't run native code (DLLs)");
         return Ok(());
     }
     if !is_record_path(&rel) {
@@ -271,7 +265,6 @@ pub fn plan(vanilla: &Vanilla, mods: &[LibraryMod], game_version: Option<String>
     let mut loaded: Vec<ModFiles> = Vec::new();
     for (lm, man) in &enabled {
         let mut mf = load_mod(lm, man, &mut plan.report)?;
-        native::check_mod(lm, man, &mf.native, &mut plan.report, &mut plan.loader)?;
         for (rel, recs) in &mf.records {
             safety::check_mod_file(&man.id, rel, recs, vanilla, &mut plan.report)?;
         }

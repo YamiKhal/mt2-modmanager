@@ -4,7 +4,7 @@
 use mt2mm_core::build::BuildPlan;
 use mt2mm_core::library::Imported;
 use mt2mm_core::paths::{self, GamePaths};
-use mt2mm_core::session::{Config, NativeRequest, Session, Status};
+use mt2mm_core::session::{Config, Session, Status};
 use std::path::PathBuf;
 
 type Res<T> = Result<T, String>;
@@ -159,15 +159,14 @@ async fn check() -> Res<BuildPlan> {
     session().plan().map_err(err)
 }
 
-// approved_native: the native-code mods the player just approved for this action (empty when none were asked about).
 #[tauri::command]
-async fn deploy(approved_native: Vec<String>) -> Res<BuildPlan> {
-    session().deploy(&approved_native.into_iter().collect()).map_err(err)
+async fn deploy() -> Res<BuildPlan> {
+    session().deploy().map_err(err)
 }
 
 #[tauri::command]
-async fn launch(approved_native: Vec<String>) -> Res<Launched> {
-    let (plan, applied) = session().launch_checked(&approved_native.into_iter().collect()).map_err(err)?;
+async fn launch() -> Res<Launched> {
+    let (plan, applied) = session().launch_checked().map_err(err)?;
     Ok(Launched { plan, applied })
 }
 
@@ -225,34 +224,6 @@ async fn open_folder(which: String) -> Res<()> {
 }
 
 #[tauri::command]
-async fn install_loader() -> Res<Vec<String>> {
-    session().install_loader().map_err(err)
-}
-
-#[tauri::command]
-async fn remove_loader() -> Res<Vec<String>> {
-    session().remove_loader().map_err(err)
-}
-
-#[tauri::command]
-async fn open_loader_log() -> Res<()> {
-    let overview = session().loader_overview().ok_or("the game folder wasn't found")?;
-    let log = overview.status.log.ok_or("there's no loader log yet: start the game once with the loader installed")?;
-
-    mt2mm_core::util::open_external(log.as_os_str()).map_err(err)
-}
-
-#[tauri::command]
-async fn native_request() -> Res<NativeRequest> {
-    session().native_request().map_err(err)
-}
-
-#[tauri::command]
-async fn remember_native_approval(ids: Vec<String>) -> Res<()> {
-    session().remember_native_approval(ids.into_iter().collect()).map_err(err)
-}
-
-#[tauri::command]
 async fn open_url(url: String) -> Res<()> {
     let u = url.trim();
     let lower = u.to_ascii_lowercase();
@@ -294,12 +265,7 @@ fn main() {
             detect_paths,
             game_running,
             open_folder,
-            open_url,
-            install_loader,
-            remove_loader,
-            open_loader_log,
-            native_request,
-            remember_native_approval
+            open_url
         ])
         .run(tauri::generate_context!())
         .expect("error while running the mod manager");

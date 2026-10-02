@@ -8,7 +8,6 @@ import { openAbout } from "./about";
 import { pickAndAddFolder, pickAndAddMods } from "./addMods";
 import { openBuildDetails } from "./buildDetails";
 import { copyGameVersion } from "./copyGameVersion";
-import { installOrUpdateLoader, openLoaderLog, removeLoader } from "./loader";
 import { pickAndAddDevMod, refreshDevMods } from "./devMods";
 import { applyToGame, launch, removeModsFromGame } from "./gameActions";
 import {
@@ -31,9 +30,6 @@ const ACTIONS: Record<string, () => unknown> = {
     dupProfile: () => newProfile(true),
     renameProfile: renameActiveProfile,
     deleteProfile: deleteActiveProfile,
-    installLoader: installOrUpdateLoader,
-    removeLoader,
-    openLoaderLog,
 
     deploy: applyToGame,
     launch,

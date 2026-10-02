@@ -6,8 +6,7 @@ import { wireActions } from "./features/actions";
 import { wireFileDrop } from "./features/addMods";
 import { renderAppliedMods } from "./features/appliedMods";
 import { renderAvailableMods, wireAvailableMods } from "./features/availableMods";
-import { renderIssues, wireIssues } from "./features/issues";
-import { renderLoaderControls } from "./features/loader";
+import { renderIssues } from "./features/issues";
 import { updateGameButtons } from "./features/gameButtons";
 import { wireGameLock } from "./features/gameLock";
 import { showGameUpdatedNotice } from "./features/gameUpdated";
@@ -28,7 +27,6 @@ onStatusChanged(renderAvailableMods);
 onStatusChanged(renderAppliedMods);
 onStatusChanged(renderModDetails);
 onStatusChanged(showGameUpdatedNotice);
-onStatusChanged(renderLoaderControls);
 
 onPlanChanged(updateGameButtons);
 onPlanChanged(renderIssues);
@@ -43,7 +41,6 @@ wireHandInstalled();
 wireSettingsDialog();
 wireFileDrop();
 wireGameLock();
-wireIssues();
 
 setLogVisible(readSetting(STORAGE_KEYS.logVisible) === "1");
 log("MT2 Mod Manager started");

@@ -1,8 +1,7 @@
-import type { Level, ReportAction, ReportEvent } from "../api/types";
+import type { Level, ReportEvent } from "../api/types";
 import { appState, modNameById } from "../app/state";
 import { byId } from "../util/dom";
 import { countOf, escapeHtml } from "../util/text";
-import { installOrUpdateLoader } from "./loader";
 import { sortBySeverity } from "./reportEvents";
 
 const LEVEL_NAMES: Record<Level, string> = {
@@ -11,27 +10,6 @@ const LEVEL_NAMES: Record<Level, string> = {
     warning: "Warning",
     info: "Info",
 };
-
-const ACTION_LABELS: Record<ReportAction, string> = {
-    install_loader: "Install loader",
-};
-
-
-export function wireIssues(): void {
-    byId("tab-issues").addEventListener("click", (event) => {
-        const button = (event.target as Element).closest<HTMLButtonElement>("[data-issue-action]");
-
-        if (!button) {
-            return;
-        }
-
-        const action = button.dataset.issueAction as ReportAction;
-
-        if (action === "install_loader") {
-            void installOrUpdateLoader();
-        }
-    });
-}
 
 
 export function renderIssues(): void {
@@ -92,24 +70,16 @@ function eventRowHtml(event: ReportEvent): string {
     const where = [event.file, event.path].filter(Boolean).join(" · ");
     const mod = event.mod_id ? modNameById(event.mod_id) : "";
 
-    return rowHtml(event.level, mod, event.message, where, actionButtonHtml(event));
+    return rowHtml(event.level, mod, event.message, where);
 }
 
-function actionButtonHtml(event: ReportEvent): string {
-    if (!event.action) {
-        return "";
-    }
-
-    return `<button class="btn small issueaction" data-issue-action="${event.action}" data-mod="${escapeHtml(event.mod_id)}">${ACTION_LABELS[event.action]}</button>`;
-}
-
-function rowHtml(level: Level, mod: string, message: string, where: string, actionHtml = ""): string {
+function rowHtml(level: Level, mod: string, message: string, where: string): string {
     const whereHtml = where ? `<span class="where mono">${escapeHtml(where)}</span>` : "";
 
     return `
         <tr>
             <td class="dotcell"><span class="dot ${level}" title="${LEVEL_NAMES[level]}" aria-label="${LEVEL_NAMES[level]}"></span></td>
             <td class="who">${escapeHtml(mod)}</td>
-            <td>${escapeHtml(message)}${whereHtml}${actionHtml}</td>
+            <td>${escapeHtml(message)}${whereHtml}</td>
         </tr>`;
 }

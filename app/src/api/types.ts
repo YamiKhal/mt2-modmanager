@@ -60,7 +60,6 @@ export interface LibraryMod {
     config_error: string | null;
     settings: ResolvedSettings;
     dev_source: string | null;
-    native: boolean;
 }
 
 export interface GamePaths {
@@ -85,18 +84,6 @@ export interface Status {
     deployed_mods: string[];
     problems: string[];
     game_update: GameUpdate | null;
-    loader: LoaderOverview | null;
-}
-
-export type LoaderState = "not_installed" | "enabled" | "disabled" | "undone_by_steam" | "broken";
-
-export interface LoaderOverview {
-    state: LoaderState;
-    version: string | null;
-    problems: string[];
-    log: string | null;
-    available: string | null;
-    update_available: boolean;
 }
 
 export interface GameUpdate {
@@ -112,20 +99,6 @@ export interface ReportEvent {
     file: string;
     path: string;
     message: string;
-    action?: ReportAction;
-}
-
-export type ReportAction = "install_loader";
-
-export interface NativeMod {
-    id: string;
-    name: string;
-    files: string[];
-}
-
-export interface NativeRequest {
-    mods: NativeMod[];
-    remembered: boolean;
 }
 
 export interface OutputFile {

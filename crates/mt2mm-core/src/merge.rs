@@ -18,9 +18,6 @@ pub struct Event {
     pub file: String,
     pub path: String,
     pub message: String,
-    // Something the player can do about it from the manager, like "install_loader".
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub action: Option<String>,
 }
 
 #[derive(Debug, Default, Clone, Serialize)]
@@ -60,12 +57,7 @@ pub const UNION_LINES: &[&str] = &["typeNames"];
 
 impl Report {
     pub fn push(&mut self, level: Level, ns: &str, file: &str, path: &str, msg: impl Into<String>) {
-        self.events.push(Event { level, mod_id: ns.into(), file: file.into(), path: path.into(), message: msg.into(), action: None });
-    }
-
-    pub fn push_action(&mut self, level: Level, ns: &str, msg: impl Into<String>, action: &str) {
-        self.push(level, ns, "", "", msg);
-        self.events.last_mut().unwrap().action = Some(action.to_string());
+        self.events.push(Event { level, mod_id: ns.into(), file: file.into(), path: path.into(), message: msg.into() });
     }
     pub fn count(&self, level: Level) -> usize {
         self.events.iter().filter(|e| e.level == level).count()
